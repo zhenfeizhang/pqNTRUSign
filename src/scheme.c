@@ -150,3 +150,14 @@ int verify(
     return 0;
 
 }
+
+
+int rejection_sampling(
+    const   int64_t     *a,
+    const   int64_t     *b,
+    const   int64_t     M,
+    const   PQ_PARAM_SET*param)
+{
+    return 0;
+}
+

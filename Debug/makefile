@@ -25,19 +25,19 @@ endif
 # Add inputs and outputs from these tool invocations to the build variables 
 
 # All Target
-all: GMLS
+all: Gaussian-pqNTRUSign
 
 # Tool invocations
-GMLS: $(OBJS) $(USER_OBJS)
+Gaussian-pqNTRUSign: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: Cross GCC Linker'
-	gcc  -o "GMLS" $(OBJS) $(USER_OBJS) $(LIBS)
+	gcc  -o "Gaussian-pqNTRUSign" $(OBJS) $(USER_OBJS) $(LIBS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 # Other Targets
 clean:
-	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) GMLS
+	-$(RM) $(EXECUTABLES)$(OBJS)$(C_DEPS) Gaussian-pqNTRUSign
 	-@echo ' '
 
 .PHONY: all clean dependents
