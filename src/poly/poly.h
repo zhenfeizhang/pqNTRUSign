@@ -77,4 +77,11 @@ int64_t InvMod(int64_t a, int64_t n);
  */
 int64_t
 cmod(const int64_t a, const int64_t p);
+
+
+/* return the scala product of two vectors */
+int64_t get_scala(
+        const int64_t *f,
+        const int64_t *g,
+        const int16_t N);
 #endif /* POLY_POLY_H_ */

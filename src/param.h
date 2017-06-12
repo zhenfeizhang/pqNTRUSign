@@ -31,7 +31,7 @@ struct _PQ_PARAM_SET {
   int64_t          q;           /* ring modulus */
   int64_t          B_t;         /* max norm of g*a convolution */
   int64_t          norm_bound_t;/* q/2 - B_t */
-  int64_t          Ms;          /* rejection rate on s side */
+  double           Ms;          /* rejection rate on s side */
   int64_t          Mt;          /* rejection rate on t side */
   const uint16_t   d;           /* Flat form +1/-1 counts */
   uint16_t         padded_N;    /* # Polynomial coefficients for Karatsuba */

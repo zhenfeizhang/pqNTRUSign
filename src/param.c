@@ -21,7 +21,7 @@ static PQ_PARAM_SET pqParamSets[] = {
       65537,               /* ring modulus */
       58,                  /* max norm of g*a convolution */
       (1<<15)-58,          /* q/2 - B_t */
-      1,                   /* todo: rejection rate on s side */
+      2.7,                   /* todo: rejection rate on s side */
       1,                   /* todo: rejection rate on t side */
       77,                  /* Product form +1/-1 counts */
       514,                 /* # Polynomial coefficients for Karatsuba */

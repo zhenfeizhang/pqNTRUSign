@@ -12,6 +12,7 @@
 #include <string.h>
 #include "param.h"
 #include "poly/poly.h"
+#include "rng/fastrandombytes.h"
 
 void keygen(
     int64_t     *f,
@@ -69,6 +70,34 @@ void keygen(
 
 
 
+int rejection_sampling(
+    const   int64_t     *a,
+    const   int64_t     *b,
+    const   PQ_PARAM_SET*param)
+{
+    uint64_t    t;
+    uint64_t    norm;
+    uint64_t    scala;
+    double      rate = param->Ms;
+    static long const bignum = 0xfffffff;
+
+    norm    = get_scala (a, a, param->N);
+    scala   = abs(get_scala (a, b, param->N));
+
+    rate *= exp(-(double)norm/(double)param->stdev/(double)param->stdev/2);
+    rate *= cosh(scala/(double)param->stdev/(double)param->stdev);
+    rate = 1/rate;
+
+    rng_uint64(&t);
+
+    printf("%f %f\n", rate, (1+(t&bignum))/((double)bignum+1));
+    if ((1+(t&bignum))/((double)bignum+1)< rate)
+        return 1;
+    else
+        return 0;
+}
+
+
 void sign(
             int64_t     *sig,
     const   int64_t     *msg,
@@ -89,36 +118,34 @@ void sign(
     int64_t *b      = a      +param->N;
     int64_t *buffer = b      +param->N;
 
+    do{
+        DGS(r, param->N, param->stdev);
 
-    DGS(r, param->N, param->stdev);
+        /* u1 = 2*r + u0 */
+        for (i=0;i<param->N;i++)
+            u1[i] = r[i]*2+msg[i];
 
-    /* u1 = 2*r + u0 */
-    for (i=0;i<param->N;i++)
-        u1[i] = r[i]*2+msg[i];
+        /* v1 = u1 * h */
+        pol_mul_coefficients( v1, h, u1, param->N, 512, param->q, buffer);
 
-    /* v1 = u1 * h */
-    pol_mul_coefficients( v1, h, u1, param->N, 512, param->q, buffer);
+        /* a = (v0-v1)/g */
+        for (i=0;i<param->N;i++)
+            a[i] = cmod(msg[i+param->N]-v1[i], 2);
 
-    /* a = (v0-v1)/g */
-    for (i=0;i<param->N;i++)
-        a[i] = cmod(msg[i+param->N]-v1[i], 2);
+        pol_mul_coefficients(a, a, g_inv, param->N, 512, 2, buffer);
 
-    pol_mul_coefficients(a, a, g_inv, param->N, 512, 2, buffer);
+        /* v= v1+ag */
+        pol_mul_coefficients(v, a, g, param->N, 512, param->q, buffer);
+        for (i=0;i<param->N;i++)
+            v[i] += v1[i];
 
-    /* v= v1+ag */
-    pol_mul_coefficients(v, a, g, param->N, 512, param->q, buffer);
+        /* b = af; sig = af +r   */
+        pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
+        for (i=0;i<param->N;i++)
+            sig[i] = b[i]+ r[i];
 
-
-    for (i=0;i<param->N;i++)
-        v[i] += v1[i];
-
-    pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
-
-
-    for (i=0;i<param->N;i++)
-        sig[i] = b[i]+ r[i];
-
-
+    } while /* rejection sampling to make signature into a Gaussian */
+        (rejection_sampling(b, sig, param) == 0);
 }
 
 
@@ -149,15 +176,5 @@ int verify(
     }
     return 0;
 
-}
-
-
-int rejection_sampling(
-    const   int64_t     *a,
-    const   int64_t     *b,
-    const   int64_t     M,
-    const   PQ_PARAM_SET*param)
-{
-    return 0;
 }
 
