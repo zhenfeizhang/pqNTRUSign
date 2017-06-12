@@ -23,7 +23,6 @@
 
 int main(void) {
 
-
     int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig;
     PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_512_107);
 
@@ -48,6 +47,63 @@ int main(void) {
 
     /* verifying the signature */
     printf("%d \n", verify(sig, msg, h,buf,param));
+
+    int i =0, j=0;
+    int counter = 0;
+
+    for (i=0;i<100;i++)
+    {
+
+        binary_poly_gen(msg, param->N*2);
+        /* sign the msg */
+        counter += sign(sig, msg, f,g,g_inv,h,buf,param);
+
+        /* verifying the signature */
+        if(verify(sig, msg, h,buf,param)!=0)
+            printf("%d error\n", i);
+    }
+    printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
+
+
+    /* sign the msg */
+    batch_sign(sig, msg, f,g,g_inv,h,buf,param);
+
+    /* verifying the signature */
+    printf("%d \n", batch_verify(sig, msg, h,buf,param));
+
+
+    /* batch verification */
+    int64_t *batchmsg, *batchsig;
+    batchmsg = malloc ( sizeof(int64_t)*param->N*2);
+    batchsig = malloc ( sizeof(int64_t)*param->N);
+    memset(batchsig, 0, sizeof(int64_t)*param->N);
+    memset(batchmsg, 0, sizeof(int64_t)*param->N*2);
+    counter = 0;
+
+    for (i=0;i<2000;i++)
+    {
+
+        binary_poly_gen(msg, param->N*2);
+
+        /* sign the msg */
+        counter += batch_sign(sig, msg, f,g,g_inv,h,buf,param);
+
+
+        for (j=0;j<param->N*2;j++)
+            batchmsg[j] = (batchmsg[j]+msg[j])%2;
+
+
+        for (j=0;j<param->N;j++)
+            batchsig[j] = batchsig[j]+sig[j];
+
+        /* verifying the signature */
+        if(batch_verify(batchsig, batchmsg, h,buf,param)!=0)
+        {
+            break;
+        }
+    }
+    printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
+    printf("batch verifed for %d signatures!\n", i);
 
 	return EXIT_SUCCESS;
 }

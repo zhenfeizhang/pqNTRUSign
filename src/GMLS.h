@@ -16,7 +16,7 @@ void keygen(
     int64_t     *buf,
     PQ_PARAM_SET *param);
 
-void sign(
+int sign(
             int64_t     *sig,
     const   int64_t     *msg,
     const   int64_t     *f,
@@ -32,4 +32,23 @@ int verify(
     const   int64_t     *h,
             int64_t     *buf,
     const   PQ_PARAM_SET*param);
+
+
+int batch_sign(
+            int64_t     *sig,
+    const   int64_t     *msg,
+    const   int64_t     *f,
+    const   int64_t     *g,
+    const   int64_t     *g_inv,
+    const   int64_t     *h,
+            int64_t     *buf,
+    const   PQ_PARAM_SET*param);
+
+int batch_verify(
+            int64_t     *sig,
+    const   int64_t     *msg,
+    const   int64_t     *h,
+            int64_t     *buf,
+    const   PQ_PARAM_SET*param);
+
 #endif /* GMLS_H_ */

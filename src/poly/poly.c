@@ -59,6 +59,26 @@ pol_gen_flat(
   return;
 }
 
+
+
+void binary_poly_gen(
+        int64_t  *ai,
+        const uint16_t  N)
+{
+    uint16_t r;
+    uint64_t i,j,index;
+    for (i=0;i<=N/16;i++)
+    {
+        rng_uint16(&r);
+        for (j=0;j<16;j++)
+        {
+            index = i*16+j;
+            if (index<N)
+                ai[index] = (r & ( 1 << j)) >> j;
+        }
+    }
+}
+
 /* Uniform random element of pZ^n, v, such that
  * v_i + (p-1)/2 <= (q-1)/2
  * v_i - (p-1)/2 >= -(q-1)/2
@@ -85,7 +105,6 @@ pol_unidrnd_pZ(
       ++i;
     }
   }
-
   return;
 }
 

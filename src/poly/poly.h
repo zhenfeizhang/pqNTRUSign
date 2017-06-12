@@ -72,6 +72,10 @@ pol_inv_mod2(
 
 int64_t InvMod(int64_t a, int64_t n);
 
+
+void binary_poly_gen(
+        int64_t  *ai,
+        const uint16_t  N);
 /* Center 'a' modulo p (an odd prime).
  * (a_i -> [-(p-1)/2, (p-1)/2]
  */
@@ -84,4 +88,6 @@ int64_t get_scala(
         const int64_t *f,
         const int64_t *g,
         const int16_t N);
+int64_t max_norm(const int64_t *f, const int16_t N);
+
 #endif /* POLY_POLY_H_ */

@@ -28,5 +28,5 @@ void rng_init();
 void rng_cleanup();
 void rng_uint16(uint16_t *r);
 void rng_uint64(uint64_t *r);
-
+void rng_init();
 #endif
