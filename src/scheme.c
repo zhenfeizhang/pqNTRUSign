@@ -117,10 +117,12 @@ int sign(
     int64_t *a      = v      +param->N;
     int64_t *b      = a      +param->N;
     int64_t *buffer = b      +param->N;
-
+    int bit     = 0;
     int counter = 0;
     sample:
         DGS(r, param->N, param->stdev);
+        bit = rand()%2;
+        if (bit==0) bit = -1;
         counter = counter+1;
 //        printf("sample r %d \n", counter);
 
@@ -145,7 +147,7 @@ int sign(
             goto sample;
 
         for (i=0;i<param->N;i++)
-            v[i] += v1[i];
+            v[i] = v1[i] + bit * v[i];
         /* rejection sampling on t side, step 2 */
         if (max_norm(v, param->N)> param->norm_bound_t)
             goto sample;
@@ -154,7 +156,7 @@ int sign(
         /* b = af; sig = af +r   */
         pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
         for (i=0;i<param->N;i++)
-            sig[i] = b[i]+ r[i];
+            sig[i] = r[i] + bit * b[i];
 
     /* rejection sampling to make signature into a Gaussian */
     if (rejection_sampling(b, sig, param) == 0)
@@ -212,10 +214,13 @@ int batch_sign(
     int64_t *a      = v      +param->N;
     int64_t *b      = a      +param->N;
     int64_t *buffer = b      +param->N;
-
+    int bit     = 0;
     int counter = 0;
+
     sample:
         DGS(r, param->N, param->stdev);
+        bit = rand()%2;
+        if (bit==0) bit = -1;
         counter = counter+1;
 //        printf("sample r %d \n", counter);
 
@@ -239,7 +244,7 @@ int batch_sign(
             goto sample;
 
         for (i=0;i<param->N;i++)
-            v[i] += v1[i];
+            v[i] = v1[i] + bit * v[i];
         /* rejection sampling on t side, step 2 */
         if (max_norm(v, param->N)> param->norm_bound_t)
             goto sample;
@@ -248,11 +253,11 @@ int batch_sign(
         /* b = af; sig = af +r   */
         pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
         for (i=0;i<param->N;i++)
-            sig[i] = b[i]+ r[i];
+            sig[i] = r[i] + bit * b[i];
 
-    /* rejection sampling to make signature into a Gaussian */
-    if (rejection_sampling(b, sig, param) == 0)
-        goto sample;
+        /* rejection sampling to make signature into a Gaussian */
+        if (rejection_sampling(b, sig, param) == 0)
+            goto sample;
 
     for (i=0;i<param->N;i++)
         sig[i] = v[i];
