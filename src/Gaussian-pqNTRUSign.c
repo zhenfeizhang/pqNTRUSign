@@ -1,9 +1,18 @@
 /*
- * scheme.c
+ *  Copyright 2017 Zhenfei Zhang @ onboard security
  *
- *  Created on: Jun 6, 2017
- *      Author: zhenfei
- */
+ *  This file is part of pqNTRUSign signature scheme with bimodal
+ *  Gaussian sampler (Gaussian-pqNTRUSign).
+ *
+ *  This software is released under GPL:
+ *  you can redistribute it and/or modify it under the terms of the
+ *  GNU General Public License as published by the Free Software
+ *  Foundation, either version 2 of the License, or (at your option)
+ *  any later version.
+ *
+ *  You should have received a copy of the GNU General Public License.
+ *  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,9 +33,9 @@ void keygen(
 {
     int64_t i;
     int64_t *fntt = buf;
-    int64_t *gntt = buf + param->N;
+    int64_t *gntt = buf  + param->N;
     int64_t *hntt = gntt + param->N;
-
+    int64_t *tmp  = hntt;
 
     memset(f, 0, sizeof(int64_t)*param->N);
     memset(g, 0, sizeof(int64_t)*param->N);
@@ -44,10 +53,10 @@ void keygen(
 
     /* set f = pf */
     for (i=0;i<param->N;i++)
-        f[i] = 2*f[i];
+        tmp[i] = 2*f[i];
 
     /* convert f and g into NTT form */
-    NTT(f, fntt);
+    NTT(tmp, fntt);
     NTT(g, gntt);
 
 
@@ -59,16 +68,16 @@ void keygen(
         hntt[i] = gntt[i]*fntt[i] % param->q;
     }
 
-
-    for (i=0;i<param->N;i++)
-        f[i] = f[i]/2;
-
     Inv_NTT(h, hntt);
 
 }
 
 
-
+/*
+ * rejection sampling on a bimodal sample
+ * "a" with a = r \pm b for r sampled from Gaussian
+ * reject into a Gaussian
+ */
 
 int rejection_sampling(
     const   int64_t     *a,
@@ -79,18 +88,23 @@ int rejection_sampling(
     uint64_t    norm;
     uint64_t    scala;
     double      rate = param->Ms;
-    static long const bignum = 0xfffffff;
+    long        bignum = 0xfffffff;
 
     norm    = get_scala (a, a, param->N);
     scala   = abs(get_scala (a, b, param->N));
 
+    /*
+     * rate = 1/ M / exp(-norm/sigma^2/2) / cosh(scala/sigma^2)
+     */
     rate *= exp(-(double)norm/(double)param->stdev/(double)param->stdev/2);
     rate *= cosh(scala/(double)param->stdev/(double)param->stdev);
     rate = 1/rate;
 
+    /*
+     * sample a random float between 0 and 1
+     * accept if this float is small than rate
+     */
     rng_uint64(&t);
-
-//    printf("%f %f\n", rate, (1+(t&bignum))/((double)bignum+1));
     if ((1+(t&bignum))/((double)bignum+1)< rate)
         return 1;
     else
@@ -117,14 +131,13 @@ int sign(
     int64_t *a      = v      +param->N;
     int64_t *b      = a      +param->N;
     int64_t *buffer = b      +param->N;
-    int bit     = 0;
-    int counter = 0;
+    int bit     = 0;    /* flipping bit for bimodal Gaussian */
+    int counter = 0;    /* number of samples to get a signature */
     sample:
         DGS(r, param->N, param->stdev);
         bit = rand()%2;
         if (bit==0) bit = -1;
         counter = counter+1;
-//        printf("sample r %d \n", counter);
 
         /* u1 = 2*r + u0 */
         for (i=0;i<param->N;i++)
@@ -152,15 +165,14 @@ int sign(
         if (max_norm(v, param->N)> param->norm_bound_t)
             goto sample;
 
-
         /* b = af; sig = af +r   */
         pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
         for (i=0;i<param->N;i++)
             sig[i] = r[i] + bit * b[i];
 
-    /* rejection sampling to make signature into a Gaussian */
-    if (rejection_sampling(b, sig, param) == 0)
-        goto sample;
+        /* rejection sampling to make signature into a Gaussian */
+        if (rejection_sampling(b, sig, param) == 0)
+            goto sample;
 
     return counter;
 }
@@ -178,14 +190,18 @@ int verify(
     int64_t *v      = u      +param->N;
     int64_t *buffer = v      +param->N;
 
+    /* check if |s| is smaller than sigma*11 */
     if (max_norm(sig, param->N)>param->stdev*11)
         return -1;
 
+    /* reconstruct u = 2s + u_p */
     for (i=0;i<param->N;i++)
         u[i] = sig[i]*2 + msg[i];
 
+    /* v = u * h */
     pol_mul_coefficients(v, u, h, param->N, 512, param->q, buffer);
 
+    /* check if v \equiv v_p mod 2 */
     for (i=0;i<param->N;i++)
     {
         if ((v[i]-msg[i+param->N]) % 2 ==1)
@@ -194,6 +210,10 @@ int verify(
     return 0;
 }
 
+/*
+ * identical to a norm signing procedure
+ * except the output signature is v not u
+ */
 
 int batch_sign(
             int64_t     *sig,
@@ -222,7 +242,6 @@ int batch_sign(
         bit = rand()%2;
         if (bit==0) bit = -1;
         counter = counter+1;
-//        printf("sample r %d \n", counter);
 
         /* u1 = 2*r + u0 */
         for (i=0;i<param->N;i++)
@@ -248,7 +267,6 @@ int batch_sign(
         /* rejection sampling on t side, step 2 */
         if (max_norm(v, param->N)> param->norm_bound_t)
             goto sample;
-
 
         /* b = af; sig = af +r   */
         pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
@@ -303,9 +321,6 @@ int batch_verify(
             return -1;
         }
     }
-
-
-
 
     return 0;
 }

@@ -4,19 +4,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/GMLS.c \
-../src/param.c \
-../src/scheme.c 
+../src/Gaussian-pqNTRUSign.c \
+../src/example.c \
+../src/param.c 
 
 OBJS += \
-./src/GMLS.o \
-./src/param.o \
-./src/scheme.o 
+./src/Gaussian-pqNTRUSign.o \
+./src/example.o \
+./src/param.o 
 
 C_DEPS += \
-./src/GMLS.d \
-./src/param.d \
-./src/scheme.d 
+./src/Gaussian-pqNTRUSign.d \
+./src/example.d \
+./src/param.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

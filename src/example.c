@@ -1,20 +1,27 @@
 /*
- ============================================================================
- Name        : GMLS.c
- Author      : zhenfei
- Version     :
- Copyright   : Your copyright notice
- Description : Hello World in C, Ansi-style
- ============================================================================
- */
+ *  Copyright 2017 Zhenfei Zhang @ onboard security
+ *
+ *  This file is part of pqNTRUSign signature scheme with bimodal
+ *  Gaussian sampler (Gaussian-pqNTRUSign).
+ *
+ *  This software is released under GPL:
+ *  you can redistribute it and/or modify it under the terms of the
+ *  GNU General Public License as published by the Free Software
+ *  Foundation, either version 2 of the License, or (at your option)
+ *  any later version.
+ *
+ *  You should have received a copy of the GNU General Public License.
+ *  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+
+#include "Gaussian-pqNTRUSign.h"
 #include "param.h"
-#include "GMLS.h"
 #include "poly/poly.h"
 
 
