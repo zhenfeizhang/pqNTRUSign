@@ -36,7 +36,8 @@ struct _PQ_PARAM_SET {
   const uint16_t   N;           /* ring degree */
   int8_t           p;           /* message space prime */
   int64_t          q;           /* ring modulus */
-  int64_t          B_t;         /* max norm of g*a convolution */
+  int64_t          B_s;         /* max l2 norm of f*a convolution */
+  int64_t          B_t;         /* max infty norm of g*a convolution */
   int64_t          norm_bound_t;/* q/2 - B_t */
   double           Ms;          /* rejection rate on s side */
   const uint16_t   d;           /* Flat form +1/-1 counts */

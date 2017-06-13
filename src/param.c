@@ -23,14 +23,15 @@ static PQ_PARAM_SET pqParamSets[] = {
       Guassian_512_107,    /* parameter set id */
       "g512-107",          /* human readable name */
       {0xff, 0xff, 0xf9},  /* OID */
-      10,                  /* bitlength of N */
-      16,                  /* bitlength of q */
+      9,                  /* bitlength of N */
+      17,                  /* bitlength of q */
       512,                 /* ring degree */
       3,                   /* message space prime */
       65537,               /* ring modulus */
-      58,                  /* max norm of g*a convolution */
-      (1<<15)-58,          /* q/2 - B_t */
-      2.7,                 /* todo: rejection rate on s side */
+      215,                 /* max l2 norm of f*a convolution */
+      40,                  /* max norm of g*a convolution */
+      (1<<15)-39,          /* q/2 - B_t */
+      7.38905609893065,    /* rejection rate on s side: e^2 */
       77,                  /* Product form +1/-1 counts */
       512,                 /* # Polynomial coefficients for Karatsuba */
       107,                 /* std dev */

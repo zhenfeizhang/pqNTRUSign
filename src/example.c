@@ -19,20 +19,28 @@
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include <time.h>
 
 #include "Gaussian-pqNTRUSign.h"
 #include "param.h"
 #include "poly/poly.h"
 
 
-
+uint64_t rdtsc(){
+    unsigned int lo,hi;
+    __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+    return ((uint64_t)hi << 32) | lo;
+}
 
 
 int main(void) {
 
     int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig;
     PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_512_107);
-
+    uint64_t startc, endc, signtime = 0, verifytime = 0;
+    clock_t start, end;
+    double cpu_time_used1;
+    double cpu_time_used2;
     f = malloc ( sizeof(int64_t)*param->N);
     g = malloc ( sizeof(int64_t)*param->N);
     g_inv = malloc ( sizeof(int64_t)*param->N);
@@ -58,20 +66,31 @@ int main(void) {
     int i =0, j=0;
     int counter = 0;
 
-    for (i=0;i<100;i++)
+    for (i=0;i<1000;i++)
     {
 
         binary_poly_gen(msg, param->N*2);
         /* sign the msg */
+        start = clock();
+        startc = rdtsc();
         counter += sign(sig, msg, f,g,g_inv,h,buf,param);
-
+        endc = rdtsc();
+        end = clock();
+        cpu_time_used1 += (end-start);
+        signtime += (endc-startc);
         /* verifying the signature */
+        startc = rdtsc();
+        start = clock();
         if(verify(sig, msg, h,buf,param)!=0)
             printf("%d error\n", i);
+        end = clock();
+        cpu_time_used2 += (end-start);
+        endc = rdtsc();
+        verifytime += (endc-startc);
     }
     printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
-
-
+    printf("average signing time: %f clock cycles or %f seconds!\n", (double)signtime/i, cpu_time_used1/i/CLOCKS_PER_SEC);
+    printf("average verification time:  %f clock cycles or %f seconds!\n", (double)verifytime/i, cpu_time_used2/i/CLOCKS_PER_SEC);
     /* sign the msg */
     batch_sign(sig, msg, f,g,g_inv,h,buf,param);
 
@@ -87,7 +106,7 @@ int main(void) {
     memset(batchmsg, 0, sizeof(int64_t)*param->N*2);
     counter = 0;
 
-    for (i=0;i<2000;i++)
+    for (i=0;i<10000;i++)
     {
 
         binary_poly_gen(msg, param->N*2);

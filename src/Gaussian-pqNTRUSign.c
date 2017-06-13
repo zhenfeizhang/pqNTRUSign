@@ -75,13 +75,13 @@ void keygen(
 
 /*
  * rejection sampling on a bimodal sample
- * "a" with a = r \pm b for r sampled from Gaussian
+ * "sig" with sig = r \pm sec for r sampled from Gaussian
  * reject into a Gaussian
  */
 
 int rejection_sampling(
-    const   int64_t     *a,
-    const   int64_t     *b,
+    const   int64_t     *sec,
+    const   int64_t     *sig,
     const   PQ_PARAM_SET*param)
 {
     uint64_t    t;
@@ -90,8 +90,12 @@ int rejection_sampling(
     double      rate = param->Ms;
     long        bignum = 0xfffffff;
 
-    norm    = get_scala (a, a, param->N);
-    scala   = abs(get_scala (a, b, param->N));
+    norm    = get_scala (sec, sec, param->N);
+    /* reject if |af|_2 > B_s */
+    if (norm> param->B_s*param->B_s)
+        return 0;
+
+    scala   = abs(get_scala (sec, sig, param->N));
 
     /*
      * rate = 1/ M / exp(-norm/sigma^2/2) / cosh(scala/sigma^2)
@@ -108,7 +112,7 @@ int rejection_sampling(
     if ((1+(t&bignum))/((double)bignum+1)< rate)
         return 1;
     else
-        return 0;
+        return 0;   /* reject */
 }
 
 
@@ -133,6 +137,7 @@ int sign(
     int64_t *buffer = b      +param->N;
     int bit     = 0;    /* flipping bit for bimodal Gaussian */
     int counter = 0;    /* number of samples to get a signature */
+
     sample:
         DGS(r, param->N, param->stdev);
         bit = rand()%2;
