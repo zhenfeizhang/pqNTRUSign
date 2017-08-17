@@ -17,9 +17,19 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "NTT.h"
 
-
+int64_t modq(
+          int64_t     a,
+          int64_t     q)
+{
+    int64_t     b = a%q;
+    if (b<0)
+        return q+b;
+    else
+        return b;
+}
 
 void NTT(
     const int64_t     *f,
@@ -47,25 +57,32 @@ void NTT(
     }
 }
 
+
 void Inv_NTT(
           int64_t     *f,
     const int64_t     *f_ntt)
 {
-    uint16_t i,j;
-    uint64_t tmp;
+    uint16_t    i,j;
+    int64_t     base;
+
+    memset(f, 0, sizeof(int64_t)*512);
+    for (j=0;j<512;j++)
+    {
+        base = 1;
+        for (i=0;i<512;i++)
+        {
+
+            f[i] = modq(f[i]+f_ntt[j]*base,65537);
+            base = modq(base*invntt[j], 65537);
+        }
+    }
     for (i=0;i<512;i++)
     {
-        tmp = 0;
-        for (j=0;j<512; j++)
-        {
-            tmp += f_ntt[j]*intt[i][j];
-        }
-        f[i] = tmp% 65537;
-        if (f[i]>32768)
+        f[i] = modq(f[i]*one_over_N,65537);
+        if(f[i]>32768)
             f[i] = f[i]-65537;
     }
 }
-
 
 int64_t* extendedEuclid (int64_t a, int64_t b){
     int64_t *dxy = (int64_t *)malloc(sizeof(int64_t) *3);

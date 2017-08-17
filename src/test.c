@@ -35,19 +35,27 @@ uint64_t rdtsc(){
 
 int main(void) {
 
-    int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig;
+    int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig, *mem;
     PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_512_107);
     uint64_t startc, endc, signtime = 0, verifytime = 0;
     clock_t start, end;
     double cpu_time_used1;
     double cpu_time_used2;
-    f = malloc ( sizeof(int64_t)*param->N);
-    g = malloc ( sizeof(int64_t)*param->N);
-    g_inv = malloc ( sizeof(int64_t)*param->N);
-    h = malloc ( sizeof(int64_t)*param->N);
-    buf = malloc ( sizeof(int64_t)*param->N*11);
-    msg = malloc ( sizeof(int64_t)*param->N*2);
-    sig = malloc ( sizeof(int64_t)*param->N);
+
+    mem = malloc ( sizeof(int64_t)*param->N * 18);
+    if (!mem)
+    {
+        printf("malloc error!\n");
+        return -1;
+    }
+
+    f       = mem;
+    g       = f     + param->N;
+    g_inv   = g     + param->N;
+    h       = g_inv + param->N;
+    buf     = h     + param->N;
+    msg     = buf   + param->N*11;
+    sig     = msg   + param->N*2;
 
 
     /* generate a set of keys */
@@ -130,7 +138,7 @@ int main(void) {
     }
     printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
     printf("batch verifed for %d signatures!\n", i);
-
+    free(mem);
 	return EXIT_SUCCESS;
 }
 
