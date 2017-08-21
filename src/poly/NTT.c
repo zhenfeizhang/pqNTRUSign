@@ -44,7 +44,7 @@ void NTT(
         base = 1;
         for (j=1;j<512;j++)
         {
-            base = base*roots[i] % 65537;
+            base = base*roots512[i] % q512;
             tmp = f[j]*base;
             even = even + tmp;
             if (j%2==0)
@@ -72,13 +72,13 @@ void Inv_NTT(
         for (i=0;i<512;i++)
         {
 
-            f[i] = modq(f[i]+f_ntt[j]*base,65537);
-            base = modq(base*invntt[j], 65537);
+            f[i] = modq(f[i]+f_ntt[j]*base,q512);
+            base = modq(base*invntt512[j], q512);
         }
     }
     for (i=0;i<512;i++)
     {
-        f[i] = modq(f[i]*one_over_N,65537);
+        f[i] = modq(f[i]*one_over_512,q512);
         if(f[i]>32768)
             f[i] = f[i]-65537;
     }
