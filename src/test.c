@@ -46,8 +46,8 @@ int main(void) {
     int i =0, j=0;
     int counter = 0;
 
-    mem = malloc (sizeof(int64_t)*param->N * 18);
-    buf = malloc (sizeof(int64_t)*param->N * 18);
+    mem = malloc (sizeof(int64_t)*param->padded_N * 18);
+    buf = malloc (sizeof(int64_t)*param->padded_N * 18);
 
     if (!mem)
     {
@@ -100,7 +100,7 @@ int main(void) {
     printf("%d \n", verify(sig, msg, h,buf,param));
 
 
-    for (i=0;i<10;i++)
+    for (i=0;i<2;i++)
     {
 
         memset(msg, 0, sizeof(int64_t)*param->N*2);
@@ -147,10 +147,12 @@ int main(void) {
     memset(batchmsg, 0, sizeof(int64_t)*param->N*2);
     counter = 0;
 
-    for (i=0;i<10;i++)
+    for (i=0;i<1;i++)
     {
 
-        binary_poly_gen(msg, param->N*2);
+        memset(msg, 0, sizeof(int64_t)*param->N*2);
+        pol_gen_flat(msg, param->N, param->d);
+        pol_gen_flat(msg+param->N, param->N, param->d);
 
         /* sign the msg */
         counter += batch_sign(sig, msg, f,g,g_inv,h,buf,param);

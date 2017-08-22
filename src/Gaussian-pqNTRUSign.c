@@ -33,10 +33,12 @@ void keygen(
 {
     int64_t i;
     int64_t *fntt = buf;
-    int64_t *gntt = buf  + param->N;
-    int64_t *hntt = gntt + param->N;
-    int64_t *tmp  = hntt;
+    int64_t *gntt = buf  + param->padded_N;
+    int64_t *hntt = gntt + param->padded_N;
+    int64_t *tmp  = hntt + param->padded_N;
 
+
+    memset(buf, 0, sizeof(int64_t)*param->padded_N*4);
     /*
      * generate flat trianry polynomials f and g
      * also compute g^-1 mod 2
@@ -53,8 +55,8 @@ void keygen(
         tmp[i] = 2*f[i];
 
     /* convert f and g into NTT form */
-    NTT(param,tmp, fntt);
-    NTT(param,g, gntt);
+    NTT(param,  tmp,    fntt);
+    NTT(param,  g,      gntt);
 
     for (i=0;i<param->N;i++)
     {
@@ -65,6 +67,22 @@ void keygen(
     }
 
     Inv_NTT(param, h, hntt);
+
+    printf("finished key generation\n");
+    printf("f:\n");
+    for (i=0;i<param->padded_N;i++)
+        printf("%d,",f[i]);
+    printf("\ng:\n");
+    for (i=0;i<param->padded_N;i++)
+        printf("%d,",g[i]);
+    printf("\ng_inv:\n");
+    for (i=0;i<param->padded_N;i++)
+        printf("%d,",g_inv[i]);
+    printf("\nh:\n");
+    for (i=0;i<param->padded_N;i++)
+        printf("%d,",h[i]);
+    printf("\n\n\n");
+
 
 }
 
@@ -140,7 +158,7 @@ int sign(
             printf ("signng failed\n");
             return -1;
         }
-
+        memset(buffer, 0, sizeof(int64_t)*param->padded_N*10);
 //        printf("repeating %d\n", counter);
         DGS(r, param->N, param->stdev);
         bit = rand()%2;
@@ -235,12 +253,29 @@ int verify(
     /* v = u * h */
     pol_mul_coefficients(v, u, h, param, buffer);
 
+
     /* check if v \equiv v_p mod 2 */
     for (i=0;i<param->N;i++)
     {
         if ((v[i]-msg[i+param->N]) % 2 ==1)
         {
+
             printf("congruent condition failed\nv:\n");
+            printf("sig:\n");
+                 for (i=0;i<param->padded_N;i++)
+                     printf("%d,",sig[i]);
+                 printf("\nu:\n");
+                 for (i=0;i<param->padded_N;i++)
+                     printf("%d,",u[i]);
+                 printf("\nv:\n");
+                 for (i=0;i<param->padded_N;i++)
+                     printf("%d,",v[i]);
+                 printf("\nh\n");
+                 for (i=0;i<param->padded_N;i++)
+                     printf("%d,",h[i]);
+                 printf("\n");
+
+
             for (j=0;j<param->padded_N;j++)
                 printf("%d, ", v[j]);
             printf("\nm[i]:\n");

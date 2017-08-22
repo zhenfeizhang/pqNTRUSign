@@ -67,6 +67,7 @@ void NTT(
         for (i=0;i<param->N;i++)
         {
             base = 1;
+            f_ntt[i]  = f[0];
             for (j=1;j<param->N;j++)
             {
                 base = base*param->roots[i] % param->q;
