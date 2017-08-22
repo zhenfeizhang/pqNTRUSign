@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "NTT.h"
-
+#include "../param.h"
 int64_t modq(
           int64_t     a,
           int64_t     q)
@@ -32,55 +32,78 @@ int64_t modq(
 }
 
 void NTT(
-    const int64_t     *f,
-          int64_t     *f_ntt)
+    const PQ_PARAM_SET  *param,
+    const int64_t       *f,
+          int64_t       *f_ntt)
 {
     uint16_t i,j;
-    int64_t odd,even,base, tmp;
-    for (i=0;i<256;i++)
+    int64_t base, tmp;
+    memset(f_ntt, 0, sizeof(uint64_t)*param->N);
+
+    if (param->N%2==0)
     {
-        odd  = f[0];
-        even = f[0];
-        base = 1;
-        for (j=1;j<512;j++)
+        int64_t odd,even;
+        for (i=0;i<param->N/2;i++)
         {
-            base = base*roots512[i] % q512;
-            tmp = f[j]*base;
-            even = even + tmp;
-            if (j%2==0)
-                odd = odd + tmp;
-            else
-                odd = odd + 65537 - tmp;
+            odd  = f[0];
+            even = f[0];
+            base = 1;
+            for (j=1;j<param->N;j++)
+            {
+                base = base*param->roots[i] % param->q;
+                tmp = f[j]*base;
+                even = even + tmp;
+                if (j%2==0)
+                    odd = odd + tmp;
+                else
+                    odd = odd + param->q - tmp;
+            }
+            f_ntt[i]= even % param->q;
+            f_ntt[param->N-1-i] = odd % param->q;
         }
-        f_ntt[i]= even % 65537;
-        f_ntt[511-i] = odd % 65537;
     }
+    else
+    {
+        for (i=0;i<param->N;i++)
+        {
+            base = 1;
+            for (j=1;j<param->N;j++)
+            {
+                base = base*param->roots[i] % param->q;
+                f_ntt[i] += f[j]*base;
+
+            }
+            f_ntt[i] %= param->q;
+        }
+    }
+
 }
 
 
 void Inv_NTT(
-          int64_t     *f,
-    const int64_t     *f_ntt)
+    const PQ_PARAM_SET  *param,
+          int64_t       *f,
+    const int64_t       *f_ntt)
 {
     uint16_t    i,j;
     int64_t     base;
 
-    memset(f, 0, sizeof(int64_t)*512);
-    for (j=0;j<512;j++)
+    memset(f, 0, sizeof(int64_t)*param->N);
+    for (j=0;j<param->N;j++)
     {
         base = 1;
-        for (i=0;i<512;i++)
+        for (i=0;i<param->N;i++)
         {
 
-            f[i] = modq(f[i]+f_ntt[j]*base,q512);
-            base = modq(base*invntt512[j], q512);
+            f[i] = modq(f[i]+f_ntt[j]*base,param->q);
+            base = modq(base*param->inv_roots[j], param->q);
         }
     }
-    for (i=0;i<512;i++)
+    for (i=0;i<param->N;i++)
     {
-        f[i] = modq(f[i]*one_over_512,q512);
-        if(f[i]>32768)
-            f[i] = f[i]-65537;
+        f[i] = modq(f[i]*param->inv_N,param->q);
+        if(f[i]>param->q/2)
+            f[i] = f[i]-param->q;
     }
 }
 
@@ -110,7 +133,9 @@ int64_t InvMod(int64_t a, int64_t n)
 
    ptr = extendedEuclid (a,n);
    if (ptr[0]!=1 && ptr[0]!=-1)
-       printf("error\n");
+   {
+       printf("InvMod error\n");
+   }
 
    if (ptr[0] == -1)
        ptr[1] = -ptr[1];

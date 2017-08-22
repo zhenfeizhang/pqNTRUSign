@@ -19,8 +19,19 @@
 #include "../rng/fastrandombytes.h"
 #include "../rng/shred.h"
 
+int is_balance(const int64_t *f, const int16_t N)
+{
+    int i, counter = 0;
+    for (i=0;i<N;i++)
+    {
+        counter += f[i];
+    }
+    return counter;
+}
+
+
 void
-pol_gen_flat(
+_pol_gen_flat(
           int64_t  *ai,
     const uint16_t  N,
     const uint16_t  d)
@@ -68,6 +79,18 @@ pol_gen_flat(
   return;
 }
 
+
+void
+pol_gen_flat(
+          int64_t  *ai,
+    const uint16_t  N,
+    const uint16_t  d)
+{
+    do{
+        memset(ai, 0, sizeof(int64_t)*N);
+        _pol_gen_flat(ai,N,d);
+    }while (is_balance(ai,N)==0);
+}
 
 
 void binary_poly_gen(

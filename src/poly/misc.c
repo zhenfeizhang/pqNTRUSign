@@ -54,3 +54,5 @@ int64_t get_scala(
         product += f[i]*g[i];
     return product;
 }
+
+

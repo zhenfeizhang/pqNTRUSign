@@ -24,6 +24,7 @@ typedef const struct _PQ_PARAM_SET  PQ_PARAM_SET;
 enum _PQ_PARAM_SET_ID {
     /* method - dimention - deviation */
     Guassian_512_107,
+    Guassian_761_107,
 };
 
 
@@ -43,6 +44,11 @@ struct _PQ_PARAM_SET {
   const uint16_t   d;           /* Flat form +1/-1 counts */
   uint16_t         padded_N;    /* # Polynomial coefficients for Karatsuba */
   uint16_t         stdev;
+
+  /* NTT param */
+  int64_t          *roots;
+  int64_t          *inv_roots;
+  int64_t          inv_N;
 };
 
 PQ_PARAM_SET *

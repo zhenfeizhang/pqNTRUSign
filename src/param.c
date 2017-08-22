@@ -15,7 +15,7 @@
 */
 
 #include <string.h>
-
+#include "poly/NTT.h"
 #include "param.h"
 
 static PQ_PARAM_SET pqParamSets[] = {
@@ -35,7 +35,33 @@ static PQ_PARAM_SET pqParamSets[] = {
       77,                  /* Product form +1/-1 counts */
       512,                 /* # Polynomial coefficients for Karatsuba */
       107,                 /* std dev */
+      /* NTT param */
+      roots512,
+      invntt512,
+      65409,
     },
+    {
+      Guassian_761_107,    /* parameter set id */
+      "g512-107",          /* human readable name */
+      {0xff, 0xff, 0xf9},  /* OID */
+      9,                  /* bitlength of N */
+      17,                  /* bitlength of q */
+      761,                 /* ring degree */
+      3,                   /* message space prime */
+      65447,               /* ring modulus */
+      215,                 /* max l2 norm of f*a convolution */
+      40,                  /* max norm of g*a convolution */
+      (1<<15)-39,          /* q/2 - B_t */
+      7.38905609893065,    /* rejection rate on s side: e^2 */
+      77,                  /* Product form +1/-1 counts */
+      768,                 /* # Polynomial coefficients for Karatsuba */
+      107,                 /* std dev */
+      /* NTT param */
+      roots761,
+      invntt761,
+      65361,
+    },
+
 };
 
 static int numParamSets = sizeof(pqParamSets)/sizeof(PQ_PARAM_SET);

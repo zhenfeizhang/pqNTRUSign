@@ -36,11 +36,15 @@ uint64_t rdtsc(){
 int main(void) {
 
     int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig, *mem;
-    PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_512_107);
+    PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_761_107);
     uint64_t startc, endc, signtime = 0, verifytime = 0;
     clock_t start, end;
     double cpu_time_used1;
     double cpu_time_used2;
+
+
+    int i =0, j=0;
+    int counter = 0;
 
     mem = malloc ( sizeof(int64_t)*param->N * 18);
     if (!mem)
@@ -61,6 +65,22 @@ int main(void) {
     /* generate a set of keys */
     keygen(f,g,g_inv,h,buf,param);
 
+
+    printf("finished key generation\n");
+    printf("f:\n");
+    for (i=0;i<param->N;i++)
+        printf("%d,",f[i]);
+    printf("\ng:\n");
+    for (i=0;i<param->N;i++)
+        printf("%d,",g[i]);
+    printf("\ng_inv:\n");
+    for (i=0;i<param->N;i++)
+        printf("%d,",g_inv[i]);
+    printf("\nh:\n");
+    for (i=0;i<param->N;i++)
+        printf("%d,",h[i]);
+    printf("\n");
+
     /* generate a message vector to sign */
     pol_gen_flat(msg, param->N, param->d);
     pol_gen_flat(msg+param->N, param->N, param->d);
@@ -71,10 +91,8 @@ int main(void) {
     /* verifying the signature */
     printf("%d \n", verify(sig, msg, h,buf,param));
 
-    int i =0, j=0;
-    int counter = 0;
 
-    for (i=0;i<1000;i++)
+    for (i=0;i<10;i++)
     {
 
         binary_poly_gen(msg, param->N*2);
@@ -114,7 +132,7 @@ int main(void) {
     memset(batchmsg, 0, sizeof(int64_t)*param->N*2);
     counter = 0;
 
-    for (i=0;i<10000;i++)
+    for (i=0;i<10;i++)
     {
 
         binary_poly_gen(msg, param->N*2);

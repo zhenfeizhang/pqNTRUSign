@@ -37,9 +37,6 @@ void keygen(
     int64_t *hntt = gntt + param->N;
     int64_t *tmp  = hntt;
 
-    memset(f, 0, sizeof(int64_t)*param->N);
-    memset(g, 0, sizeof(int64_t)*param->N);
-
     /*
      * generate flat trianry polynomials f and g
      * also compute g^-1 mod 2
@@ -56,9 +53,12 @@ void keygen(
         tmp[i] = 2*f[i];
 
     /* convert f and g into NTT form */
-    NTT(tmp, fntt);
-    NTT(g, gntt);
+    NTT(param,tmp, fntt);
+    NTT(param,g, gntt);
 
+    for (i=0;i<param->N;i++)
+        printf("%d,", fntt[i]);
+    printf("\n");
 
     for (i=0;i<param->N;i++)
     {
@@ -68,7 +68,7 @@ void keygen(
         hntt[i] = gntt[i]*fntt[i] % param->q;
     }
 
-    Inv_NTT(h, hntt);
+    Inv_NTT(param, h, hntt);
 
 }
 
@@ -300,10 +300,10 @@ int batch_verify(
     int64_t *hinv   = v      +param->N;
     int64_t *buffer = hinv   +param->N;
 
-    NTT(h, buffer);
+    NTT(param, h, buffer);
     for (i=0;i<param->N;i++)
         buffer[i] = InvMod(buffer[i], param->q);
-    Inv_NTT(hinv, buffer);
+    Inv_NTT(param, hinv, buffer);
     for (i=0;i<param->N;i++)
     {
         if ((sig[i]-msg[i+param->N]) % 2 ==1)

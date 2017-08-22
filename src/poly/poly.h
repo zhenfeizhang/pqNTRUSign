@@ -51,12 +51,14 @@ pol_unidrnd_pZ(
 
 
 void NTT(
-    const int64_t     *f,
-          int64_t     *f_ntt);
+    const PQ_PARAM_SET  *param,
+    const int64_t       *f,
+          int64_t       *f_ntt);
 
 void Inv_NTT(
-          int64_t     *f,
-    const int64_t     *f_ntt);
+    const PQ_PARAM_SET  *param,
+          int64_t       *f,
+    const int64_t       *f_ntt);
 
 
 int64_t max_norm(const int64_t *f, const int16_t N);
