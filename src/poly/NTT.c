@@ -94,7 +94,6 @@ void Inv_NTT(
         base = 1;
         for (i=0;i<param->N;i++)
         {
-
             f[i] = modq(f[i]+f_ntt[j]*base,param->q);
             base = modq(base*param->inv_roots[j], param->q);
         }

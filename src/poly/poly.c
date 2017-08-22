@@ -18,7 +18,7 @@
 #include <string.h>
 #include "../rng/fastrandombytes.h"
 #include "../rng/shred.h"
-
+#include "../param.h"
 int is_balance(const int64_t *f, const int16_t N)
 {
     int i, counter = 0;
@@ -310,7 +310,7 @@ karatsuba(
   uint16_t j;
 
   /* Grade school multiplication for small / odd inputs */
-  if(k <= 38 || (k & 1) != 0)
+  if(k <= 32 || (k & 1) != 0)
   {
     for(j=0; j<k; j++)
     {
@@ -402,21 +402,50 @@ pol_mul_coefficients(
      int64_t         *c,       /* out - address for polynomial c */
      const int64_t   *a,       /*  in - pointer to polynomial a */
      const int64_t   *b,       /*  in - pointer to polynomial b */
-     const uint16_t  N,        /*  in - ring degree */
-     const uint16_t  padN,     /*  in - padded polynomial degree */
-     const int64_t   q,        /*  in - large modulus */
+     PQ_PARAM_SET    *param,
      int64_t         *tmp)
 {
-  uint16_t i;
-  int64_t *res = tmp;
-  int64_t *scratch = res + 2*padN;
-  memset(res, 0, 2*N*sizeof(int64_t));
-  karatsuba(res, scratch, a, b, padN);
+    uint16_t i;
+    int64_t *res = tmp;
+    int64_t *scratch = res + 2*param->padded_N;
+    memset(res, 0, 2*param->N*sizeof(int64_t));
+    karatsuba(res, scratch, a, b, param->padded_N);
 
-  for(i=0; i<N; i++)
-  {
-    c[i] = cmod(res[i] - res[i+N], q);
-  }
+    if (param->id == Guassian_512_107)
+    {
+        for(i=0; i<param->N; i++)
+            c[i] = cmod(res[i] - res[i+param->N], param->q);
+    }
+    else if (param->id == Guassian_761_107)
+    {
+        for(i=0; i<param->N; i++)
+            c[i] = cmod(res[i] + res[i+param->N], param->q);
+    }
 }
 
+void
+pol_mul_mod_2(
+     int64_t         *c,       /* out - address for polynomial c */
+     const int64_t   *a,       /*  in - pointer to polynomial a */
+     const int64_t   *b,       /*  in - pointer to polynomial b */
+     PQ_PARAM_SET    *param,
+     int64_t         *tmp)
+{
+    uint16_t i;
+    int64_t *res = tmp;
+    int64_t *scratch = res + 2*param->padded_N;
+    memset(res, 0, 2*param->N*sizeof(int64_t));
+    karatsuba(res, scratch, a, b, param->padded_N);
+
+    if (param->id == Guassian_512_107)
+    {
+        for(i=0; i<param->N; i++)
+            c[i] = cmod(res[i] - res[i+param->N], 2);
+    }
+    else if (param->id == Guassian_761_107)
+    {
+        for(i=0; i<param->N; i++)
+            c[i] = cmod(res[i] + res[i+param->N], 2);
+    }
+}
 

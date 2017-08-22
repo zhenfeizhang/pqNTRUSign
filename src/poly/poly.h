@@ -69,9 +69,15 @@ pol_mul_coefficients(
      int64_t         *c,       /* out - address for polynomial c */
      const int64_t   *a,       /*  in - pointer to polynomial a */
      const int64_t   *b,       /*  in - pointer to polynomial b */
-     const uint16_t  N,        /*  in - ring degree */
-     const uint16_t  padN,     /*  in - padded polynomial degree */
-     const int64_t   q,        /*  in - large modulus */
+     PQ_PARAM_SET    *param,
+     int64_t         *tmp);
+
+void
+pol_mul_mod_2(
+     int64_t         *c,       /* out - address for polynomial c */
+     const int64_t   *a,       /*  in - pointer to polynomial a */
+     const int64_t   *b,       /*  in - pointer to polynomial b */
+     PQ_PARAM_SET    *param,
      int64_t         *tmp);
 
 int

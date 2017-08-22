@@ -57,10 +57,6 @@ void keygen(
     NTT(param,g, gntt);
 
     for (i=0;i<param->N;i++)
-        printf("%d,", fntt[i]);
-    printf("\n");
-
-    for (i=0;i<param->N;i++)
     {
         /* compute f^-1 mod q */
         fntt[i] = InvMod(fntt[i],param->q);
@@ -129,16 +125,23 @@ int sign(
 
     int64_t i;
     int64_t *r      = buf;
-    int64_t *u1     = r      +param->N;
-    int64_t *v1     = u1     +param->N;
-    int64_t *v      = v1     +param->N;
-    int64_t *a      = v      +param->N;
-    int64_t *b      = a      +param->N;
-    int64_t *buffer = b      +param->N;
+    int64_t *u1     = r      +  param->padded_N;
+    int64_t *v1     = u1     +  param->padded_N;
+    int64_t *v      = v1     +  param->padded_N;
+    int64_t *a      = v      +  param->padded_N;
+    int64_t *b      = a      +  param->padded_N;
+    int64_t *buffer = b      +  param->padded_N;
     int bit     = 0;    /* flipping bit for bimodal Gaussian */
     int counter = 0;    /* number of samples to get a signature */
 
     sample:
+        if(counter>100)
+        {
+            printf ("signng failed\n");
+            return -1;
+        }
+
+//        printf("repeating %d\n", counter);
         DGS(r, param->N, param->stdev);
         bit = rand()%2;
         if (bit==0) bit = -1;
@@ -149,35 +152,58 @@ int sign(
             u1[i] = r[i]*2+msg[i];
 
         /* v1 = u1 * h */
-        pol_mul_coefficients( v1, h, u1, param->N, 512, param->q, buffer);
+        pol_mul_coefficients( v1, h, u1, param, buffer);
 
         /* a = (v0-v1)/g */
         for (i=0;i<param->N;i++)
             a[i] = cmod(msg[i+param->N]-v1[i], 2);
 
-        pol_mul_coefficients(a, a, g_inv, param->N, 512, 2, buffer);
+        pol_mul_mod_2(a, a, g_inv, param, buffer);
 
         /* v= v1+ag */
-        pol_mul_coefficients(v, a, g, param->N, 512, param->q, buffer);
+        pol_mul_coefficients(v, a, g, param, buffer);
 
+/*        printf("a:\n");
+        for (i=0;i<param->padded_N;i++)
+            printf("%d,",a[i]);
+        printf("\ng:\n");
+        for (i=0;i<param->padded_N;i++)
+            printf("%d,",g[i]);
+        printf("\nv:\n");
+        for (i=0;i<param->padded_N;i++)
+            printf("%d,",v[i]);
+        printf("\n");
+*/
         /* rejection sampling on t side, step 1 */
         if (max_norm(v, param->N)> param->B_t)
+        {
+//            printf("max norm of v %d rejected, step 1\n", max_norm(v, param->N));
             goto sample;
+        }
+
 
         for (i=0;i<param->N;i++)
             v[i] = v1[i] + bit * v[i];
         /* rejection sampling on t side, step 2 */
         if (max_norm(v, param->N)> param->norm_bound_t)
+        {
+//            printf("max norm of v %d rejected, step 2\n", max_norm(v, param->N));
             goto sample;
+        }
+
+
 
         /* b = af; sig = af +r   */
-        pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
+        pol_mul_coefficients(b, a, f, param, buffer);
         for (i=0;i<param->N;i++)
             sig[i] = r[i] + bit * b[i];
 
         /* rejection sampling to make signature into a Gaussian */
         if (rejection_sampling(b, sig, param) == 0)
+        {
+//            printf("l2 norm of b rejected\n");
             goto sample;
+        }
 
     return counter;
 }
@@ -190,27 +216,40 @@ int verify(
             int64_t     *buf,
     const   PQ_PARAM_SET*param)
 {
-    int64_t i;
+    int64_t i,j;
     int64_t *u      = buf;
-    int64_t *v      = u      +param->N;
-    int64_t *buffer = v      +param->N;
+    int64_t *v      = u      +param->padded_N;
+    int64_t *buffer = v      +param->padded_N;
 
     /* check if |s| is smaller than sigma*11 */
     if (max_norm(sig, param->N)>param->stdev*11)
+    {
+        printf("max norm failed\n");
         return -1;
+    }
 
     /* reconstruct u = 2s + u_p */
     for (i=0;i<param->N;i++)
         u[i] = sig[i]*2 + msg[i];
 
     /* v = u * h */
-    pol_mul_coefficients(v, u, h, param->N, 512, param->q, buffer);
+    pol_mul_coefficients(v, u, h, param, buffer);
 
     /* check if v \equiv v_p mod 2 */
     for (i=0;i<param->N;i++)
     {
         if ((v[i]-msg[i+param->N]) % 2 ==1)
+        {
+            printf("congruent condition failed\nv:\n");
+            for (j=0;j<param->padded_N;j++)
+                printf("%d, ", v[j]);
+            printf("\nm[i]:\n");
+            for (j=0;j<param->padded_N;j++)
+                printf("%d, ", msg[j+param->N]);
             return -1;
+
+        }
+
     }
     return 0;
 }
@@ -233,12 +272,12 @@ int batch_sign(
 
     int64_t i;
     int64_t *r      = buf;
-    int64_t *u1     = r      +param->N;
-    int64_t *v1     = u1     +param->N;
-    int64_t *v      = v1     +param->N;
-    int64_t *a      = v      +param->N;
-    int64_t *b      = a      +param->N;
-    int64_t *buffer = b      +param->N;
+    int64_t *u1     = r      +  param->padded_N;
+    int64_t *v1     = u1     +  param->padded_N;
+    int64_t *v      = v1     +  param->padded_N;
+    int64_t *a      = v      +  param->padded_N;
+    int64_t *b      = a      +  param->padded_N;
+    int64_t *buffer = b      +  param->padded_N;
     int bit     = 0;
     int counter = 0;
 
@@ -253,16 +292,16 @@ int batch_sign(
             u1[i] = r[i]*2+msg[i];
 
         /* v1 = u1 * h */
-        pol_mul_coefficients( v1, h, u1, param->N, 512, param->q, buffer);
+        pol_mul_coefficients( v1, h, u1, param, buffer);
 
         /* a = (v0-v1)/g */
         for (i=0;i<param->N;i++)
             a[i] = cmod(msg[i+param->N]-v1[i], 2);
 
-        pol_mul_coefficients(a, a, g_inv, param->N, 512, 2, buffer);
+        pol_mul_mod_2(a, a, g_inv, param, buffer);
 
         /* v= v1+ag */
-        pol_mul_coefficients(v, a, g, param->N, 512, param->q, buffer);
+        pol_mul_coefficients(v, a, g, param, buffer);
         /* rejection sampling on t side, step 1 */
         if (max_norm(v, param->N)> param->B_t)
             goto sample;
@@ -274,7 +313,7 @@ int batch_sign(
             goto sample;
 
         /* b = af; sig = af +r   */
-        pol_mul_coefficients(b, a, f, param->N, 512, param->q, buffer);
+        pol_mul_coefficients(b, a, f, param, buffer);
         for (i=0;i<param->N;i++)
             sig[i] = r[i] + bit * b[i];
 
@@ -296,9 +335,9 @@ int batch_verify(
 {
     int64_t i;
     int64_t *u      = buf;
-    int64_t *v      = u      +param->N;
-    int64_t *hinv   = v      +param->N;
-    int64_t *buffer = hinv   +param->N;
+    int64_t *v      = u      +param->padded_N;
+    int64_t *hinv   = v      +param->padded_N;
+    int64_t *buffer = hinv   +param->padded_N;
 
     NTT(param, h, buffer);
     for (i=0;i<param->N;i++)
@@ -312,7 +351,7 @@ int batch_verify(
             return -1;
         }
     }
-    pol_mul_coefficients(u, sig, hinv, param->N, 512, param->q, buffer);
+    pol_mul_coefficients(u, sig, hinv, param, buffer);
 
 
 //    if (max_norm(u, param->N)>param->stdev*11)
