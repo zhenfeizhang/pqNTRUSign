@@ -23,26 +23,31 @@
 #include "poly/poly.h"
 #include "rng/fastrandombytes.h"
 
+
+/*
+ * generate a set of private/public key pairs.
+ * requires a buffer for 3 padded polynomials
+ */
+
 void keygen(
-    int64_t     *f,
-    int64_t     *g,
-    int64_t     *g_inv,
-    int64_t     *h,
-    int64_t     *buf,
-    PQ_PARAM_SET *param)
+            int64_t     *f,         /* output - secret key */
+            int64_t     *g,         /* output - secret key */
+            int64_t     *g_inv,     /* output - secret key */
+            int64_t     *h,         /* output - public key */
+            int64_t     *buf,       /* input  - buffer     */
+    const   PQ_PARAM_SET*param)     /* input  - parameters */
 {
     int64_t i;
     int64_t *fntt = buf;
     int64_t *gntt = buf  + param->padded_N;
     int64_t *hntt = gntt + param->padded_N;
-    int64_t *tmp  = hntt + param->padded_N;
+    int64_t *tmp  = hntt;
 
 
     memset(buf, 0, sizeof(int64_t)*param->padded_N*4);
     /*
      * generate flat trianry polynomials f and g
      * also compute g^-1 mod 2
-     *
      */
     pol_gen_flat(f, param->N, param->d);
     do{
@@ -67,23 +72,7 @@ void keygen(
     }
 
     Inv_NTT(param, h, hntt);
-
-    printf("finished key generation\n");
-    printf("f:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%d,",f[i]);
-    printf("\ng:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%d,",g[i]);
-    printf("\ng_inv:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%d,",g_inv[i]);
-    printf("\nh:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%d,",h[i]);
-    printf("\n\n\n");
-
-
+    return;
 }
 
 
@@ -130,15 +119,20 @@ int rejection_sampling(
 }
 
 
+/*
+ * sign a message using rejection sampling method
+ * returns the number of repetitions
+ * buf memory requirement: 10 polynomials.
+ */
 int sign(
-            int64_t     *sig,
-    const   int64_t     *msg,
-    const   int64_t     *f,
-    const   int64_t     *g,
-    const   int64_t     *g_inv,
-    const   int64_t     *h,
-            int64_t     *buf,
-    const   PQ_PARAM_SET*param)
+            int64_t     *sig,       /* output - signature  */
+    const   int64_t     *msg,       /* input  - message    */
+    const   int64_t     *f,         /* input  - secret key */
+    const   int64_t     *g,         /* input  - secret key */
+    const   int64_t     *g_inv,     /* input  - secret key */
+    const   int64_t     *h,         /* input  - public key */
+            int64_t     *buf,       /* input  - buffer     */
+    const   PQ_PARAM_SET*param)     /* input  - parameters */
 {
 
     int64_t i;
@@ -158,11 +152,15 @@ int sign(
             printf ("signng failed\n");
             return -1;
         }
-        memset(buffer, 0, sizeof(int64_t)*param->padded_N*10);
-//        printf("repeating %d\n", counter);
+        memset(buffer, 0, sizeof(int64_t)*param->padded_N*3);
+
+        /* sample from discrete Gaussian */
         DGS(r, param->N, param->stdev);
+
+        /* flipping bit for bimodal Gaussian */
         bit = rand()%2;
         if (bit==0) bit = -1;
+
         counter = counter+1;
 
         /* u1 = 2*r + u0 */
@@ -181,35 +179,19 @@ int sign(
         /* v= v1+ag */
         pol_mul_coefficients(v, a, g, param, buffer);
 
-/*        printf("a:\n");
-        for (i=0;i<param->padded_N;i++)
-            printf("%d,",a[i]);
-        printf("\ng:\n");
-        for (i=0;i<param->padded_N;i++)
-            printf("%d,",g[i]);
-        printf("\nv:\n");
-        for (i=0;i<param->padded_N;i++)
-            printf("%d,",v[i]);
-        printf("\n");
-*/
         /* rejection sampling on t side, step 1 */
         if (max_norm(v, param->N)> param->B_t)
         {
-//            printf("max norm of v %d rejected, step 1\n", max_norm(v, param->N));
             goto sample;
         }
-
 
         for (i=0;i<param->N;i++)
             v[i] = v1[i] + bit * v[i];
         /* rejection sampling on t side, step 2 */
         if (max_norm(v, param->N)> param->norm_bound_t)
         {
-//            printf("max norm of v %d rejected, step 2\n", max_norm(v, param->N));
             goto sample;
         }
-
-
 
         /* b = af; sig = af +r   */
         pol_mul_coefficients(b, a, f, param, buffer);
@@ -219,22 +201,24 @@ int sign(
         /* rejection sampling to make signature into a Gaussian */
         if (rejection_sampling(b, sig, param) == 0)
         {
-//            printf("l2 norm of b rejected\n");
             goto sample;
         }
 
     return counter;
 }
 
-
+/*
+ * verifies a signature, returns 0 if valid
+ * buf memory requirement: 5 polynomials.
+ */
 int verify(
-    const   int64_t     *sig,
-    const   int64_t     *msg,
-    const   int64_t     *h,
-            int64_t     *buf,
-    const   PQ_PARAM_SET*param)
+    const   int64_t     *sig,       /* input  - signature  */
+    const   int64_t     *msg,       /* input  - message    */
+    const   int64_t     *h,         /* input  - public key */
+            int64_t     *buf,       /* input  - buffer     */
+    const   PQ_PARAM_SET*param)     /* input  - parameters */
 {
-    int64_t i,j;
+    int64_t i;
     int64_t *u      = buf;
     int64_t *v      = u      +param->padded_N;
     int64_t *buffer = v      +param->padded_N;
@@ -259,32 +243,9 @@ int verify(
     {
         if ((v[i]-msg[i+param->N]) % 2 ==1)
         {
-
             printf("congruent condition failed\nv:\n");
-            printf("sig:\n");
-                 for (i=0;i<param->padded_N;i++)
-                     printf("%d,",sig[i]);
-                 printf("\nu:\n");
-                 for (i=0;i<param->padded_N;i++)
-                     printf("%d,",u[i]);
-                 printf("\nv:\n");
-                 for (i=0;i<param->padded_N;i++)
-                     printf("%d,",v[i]);
-                 printf("\nh\n");
-                 for (i=0;i<param->padded_N;i++)
-                     printf("%d,",h[i]);
-                 printf("\n");
-
-
-            for (j=0;j<param->padded_N;j++)
-                printf("%d, ", v[j]);
-            printf("\nm[i]:\n");
-            for (j=0;j<param->padded_N;j++)
-                printf("%d, ", msg[j+param->N]);
             return -1;
-
         }
-
     }
     return 0;
 }

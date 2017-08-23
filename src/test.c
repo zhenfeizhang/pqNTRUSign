@@ -46,10 +46,12 @@ int main(void) {
     int i =0, j=0;
     int counter = 0;
 
-    mem = malloc (sizeof(int64_t)*param->padded_N * 18);
-    buf = malloc (sizeof(int64_t)*param->padded_N * 18);
+    /* memory to store keys/msgs/ctx */
+    mem = malloc (sizeof(int64_t)*param->padded_N * 7);
+    /* buffer */
+    buf = malloc (sizeof(int64_t)*param->padded_N * 10);
 
-    if (!mem)
+    if (!mem || !buf)
     {
         printf("malloc error!\n");
         return -1;
@@ -64,43 +66,64 @@ int main(void) {
 
 
     /* generate a set of keys */
+    printf("=====================================\n");
+    printf("begin a single signing procedure\n");
+    printf("start key generation\n");
+
+    memset(buf, 0, sizeof(int64_t)*param->N * 3);
     keygen(f,g,g_inv,h,buf,param);
 
 
-    printf("finished key generation\n");
+
     printf("f:\n");
     for (i=0;i<param->padded_N;i++)
-        printf("%d,",f[i]);
+        printf("%lld,",(long long)f[i]);
     printf("\ng:\n");
     for (i=0;i<param->padded_N;i++)
-        printf("%d,",g[i]);
+        printf("%lld,", (long long)g[i]);
     printf("\ng_inv:\n");
     for (i=0;i<param->padded_N;i++)
-        printf("%d,",g_inv[i]);
+        printf("%lld,",(long long)g_inv[i]);
     printf("\nh:\n");
     for (i=0;i<param->padded_N;i++)
-        printf("%d,",h[i]);
+        printf("%lld,",(long long)h[i]);
     printf("\n");
+    printf("finished key generation\n");
+    printf("=====================================\n");
+
 
 
     /* generate a message vector to sign */
     pol_gen_flat(msg, param->N, param->d);
     pol_gen_flat(msg+param->N, param->N, param->d);
 
-
-
     /* sign the msg */
-    printf("starting signing the message\n");
+    printf("now signing a message\n");
+    for (i=0;i<param->N;i++)
+        printf("%lld,",(long long)msg[i]);
+    printf("\n");
+    for (;i<param->padded_N*2;i++)
+        printf("%lld,",(long long)msg[i]);
+    printf("\n");
 
-    memset(buf, 0, sizeof(int64_t)*param->N * 18);
 
+    memset(buf, 0, sizeof(int64_t)*param->N * 10);
     sign(sig, msg, f,g,g_inv,h,buf,param);
-    printf("starting verifying the signature\n");
+    printf("the signature is:\n");
+    for (i=0;i<param->N;i++)
+        printf("%lld,",(long long)sig[i]);
+    printf("\n");
+
+    printf("=====================================\n");
+
+    printf("now verifying the signature: 0 for valid, -1 for invalid:   ");
     /* verifying the signature */
     printf("%d \n", verify(sig, msg, h,buf,param));
+    printf("=====================================\n");
 
+    printf("benchmark with signing a set of messages\n");
 
-    for (i=0;i<2;i++)
+    for (i=0;i<100;i++)
     {
 
         memset(msg, 0, sizeof(int64_t)*param->N*2);
@@ -108,7 +131,7 @@ int main(void) {
         pol_gen_flat(msg+param->N, param->N, param->d);
 
         /* sign the msg */
-        memset(buf, 0, sizeof(int64_t)*param->N * 18);
+        memset(buf, 0, sizeof(int64_t)*param->N * 10);
         start = clock();
         startc = rdtsc();
         counter += sign(sig, msg, f,g,g_inv,h,buf,param);
@@ -118,7 +141,7 @@ int main(void) {
         signtime += (endc-startc);
 
         /* verifying the signature */
-        memset(buf, 0, sizeof(int64_t)*param->N * 18);
+        memset(buf, 0, sizeof(int64_t)*param->N * 5);
         startc = rdtsc();
         start = clock();
 
