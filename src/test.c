@@ -43,7 +43,7 @@ int main(void) {
     double cpu_time_used2;
 
 
-    int i =0, j=0;
+    int i =0;
     int counter = 0;
 
     /* memory to store keys/msgs/ctx */
@@ -155,48 +155,10 @@ int main(void) {
     printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
     printf("average signing time: %f clock cycles or %f seconds!\n", (double)signtime/i, cpu_time_used1/i/CLOCKS_PER_SEC);
     printf("average verification time:  %f clock cycles or %f seconds!\n", (double)verifytime/i, cpu_time_used2/i/CLOCKS_PER_SEC);
-    /* sign the msg */
-    batch_sign(sig, msg, f,g,g_inv,h,buf,param);
-
-    /* verifying the signature */
-    printf("%d \n", batch_verify(sig, msg, h,buf,param));
 
 
-    /* batch verification */
-    int64_t *batchmsg, *batchsig;
-    batchmsg = malloc ( sizeof(int64_t)*param->N*2);
-    batchsig = malloc ( sizeof(int64_t)*param->N);
-    memset(batchsig, 0, sizeof(int64_t)*param->N);
-    memset(batchmsg, 0, sizeof(int64_t)*param->N*2);
-    counter = 0;
-
-    for (i=0;i<1;i++)
-    {
-
-        memset(msg, 0, sizeof(int64_t)*param->N*2);
-        pol_gen_flat(msg, param->N, param->d);
-        pol_gen_flat(msg+param->N, param->N, param->d);
-
-        /* sign the msg */
-        counter += batch_sign(sig, msg, f,g,g_inv,h,buf,param);
-
-
-        for (j=0;j<param->N*2;j++)
-            batchmsg[j] = (batchmsg[j]+msg[j])%2;
-
-
-        for (j=0;j<param->N;j++)
-            batchsig[j] = batchsig[j]+sig[j];
-
-        /* verifying the signature */
-        if(batch_verify(batchsig, batchmsg, h,buf,param)!=0)
-        {
-            break;
-        }
-    }
-    printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
-    printf("batch verifed for %d signatures!\n", i);
     free(mem);
+    free(buf);
 	return EXIT_SUCCESS;
 }
 

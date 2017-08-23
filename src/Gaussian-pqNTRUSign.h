@@ -57,22 +57,4 @@ int verify(
             int64_t     *buf,       /* input  - buffer     */
     const   PQ_PARAM_SET*param);    /* input  - parameters */
 
-
-int batch_sign(
-            int64_t     *sig,
-    const   int64_t     *msg,
-    const   int64_t     *f,
-    const   int64_t     *g,
-    const   int64_t     *g_inv,
-    const   int64_t     *h,
-            int64_t     *buf,
-    const   PQ_PARAM_SET*param);
-
-int batch_verify(
-            int64_t     *sig,
-    const   int64_t     *msg,
-    const   int64_t     *h,
-            int64_t     *buf,
-    const   PQ_PARAM_SET*param);
-
 #endif /* GAUSSIAN_PQNTRUSIGN_H_ */
