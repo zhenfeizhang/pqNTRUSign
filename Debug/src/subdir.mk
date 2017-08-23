@@ -4,18 +4,18 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../src/Gaussian-pqNTRUSign.c \
 ../src/param.c \
+../src/pqNTRUSign.c \
 ../src/test.c 
 
 OBJS += \
-./src/Gaussian-pqNTRUSign.o \
 ./src/param.o \
+./src/pqNTRUSign.o \
 ./src/test.o 
 
 C_DEPS += \
-./src/Gaussian-pqNTRUSign.d \
 ./src/param.d \
+./src/pqNTRUSign.d \
 ./src/test.d 
 
 

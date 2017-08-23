@@ -22,7 +22,7 @@
 #include "param.h"
 #include "poly/poly.h"
 #include "rng/fastrandombytes.h"
-
+#include "rng/crypto_hash_sha512.h"
 
 /*
  * generate a set of private/public key pairs.
@@ -118,14 +118,61 @@ int rejection_sampling(
 }
 
 
+
+#define HASH_BYTES 64
+static int
+challenge(
+            int64_t         *msg_dig,       /* output message digest */
+    const   int64_t         *public_key,    /* input public key h */
+    const   unsigned char   *msg,           /* input message */
+    const   size_t          msg_len,        /* input message length */
+    const   PQ_PARAM_SET    *param)         /* input  - parameters */
+{
+    uint16_t      i;
+    uint16_t      j;
+    uint8_t       r;
+
+    unsigned char input[2*HASH_BYTES];
+    unsigned char pool[HASH_BYTES];
+
+    /* pool = hash(hash(msg) || hash(public key)) */
+    crypto_hash_sha512(input, msg, msg_len);
+
+    memcpy(input+HASH_BYTES, public_key, HASH_BYTES);
+    crypto_hash_sha512(pool, input, 2*HASH_BYTES);
+
+    j = 0;
+    i = 0;
+    r = 0;
+    while(i < param->N*2)
+    {
+        if(j == HASH_BYTES)
+        {
+            memcpy(input, pool, HASH_BYTES);
+            crypto_hash_sha512(pool, input, HASH_BYTES);
+            j = 0;
+        }
+        if(r == 0)
+        {
+          r = (uint8_t) pool[j++];
+        }
+        msg_dig[i] = r&1;
+        r >>= 1;
+        i++;
+    }
+
+  return 0;
+}
+
 /*
  * sign a message using rejection sampling method
  * returns the number of repetitions
- * buf memory requirement: 10 polynomials.
+ * buf memory requirement: 11 polynomials.
  */
 int sign(
             int64_t     *sig,       /* output - signature  */
-    const   int64_t     *msg,       /* input  - message    */
+    const unsigned char *msg,       /* input  - message    */
+    const   size_t      msg_len,    /* input  - length of msg */
     const   int64_t     *f,         /* input  - secret key */
     const   int64_t     *g,         /* input  - secret key */
     const   int64_t     *g_inv,     /* input  - secret key */
@@ -141,9 +188,13 @@ int sign(
     int64_t *v      = v1     +  param->padded_N;
     int64_t *a      = v      +  param->padded_N;
     int64_t *b      = a      +  param->padded_N;
-    int64_t *buffer = b      +  param->padded_N;
+    int64_t *sptp   = b      +  param->padded_N;    /* 2 polynomials */
+    int64_t *buffer = sptp   +  param->padded_N*2;  /* 3 polynomials */
     int     bit     = 0;    /* flip a bit for bimodal Gaussian */
     int     counter = 0;    /* number of samples to get a signature */
+
+
+    challenge (sptp, h, msg, msg_len, param);
 
     sample:
         if(counter>100)
@@ -174,14 +225,14 @@ int sign(
 
         /* u1 = p*r + u0 */
         for (i=0;i<param->N;i++)
-            u1[i] = r[i]*param->p+msg[i];
+            u1[i] = r[i]*param->p+sptp[i];
 
         /* v1 = u1 * h */
         pol_mul_coefficients( v1, h, u1, param, buffer);
 
         /* a = (v0-v1)/g  mod p*/
         for (i=0;i<param->N;i++)
-            a[i] = cmod(msg[i+param->N]-v1[i], param->p);
+            a[i] = cmod(sptp[i+param->N]-v1[i], param->p);
 
         pol_mul_mod_p(a, a, g_inv, param, buffer);
 
@@ -230,19 +281,23 @@ int sign(
 
 /*
  * verifies a signature, returns 0 if valid
- * buf memory requirement: 5 polynomials.
+ * buf memory requirement: 7 polynomials.
  */
 int verify(
     const   int64_t     *sig,       /* input  - signature  */
-    const   int64_t     *msg,       /* input  - message    */
+    const unsigned char *msg,       /* input  - message    */
+    const   size_t      msg_len,    /* input  - length of msg */
     const   int64_t     *h,         /* input  - public key */
             int64_t     *buf,       /* input  - buffer     */
     const   PQ_PARAM_SET*param)     /* input  - parameters */
 {
     int64_t i;
     int64_t *u      = buf;
-    int64_t *v      = u      +param->padded_N;
-    int64_t *buffer = v      +param->padded_N;
+    int64_t *v      = u     + param->padded_N;
+    int64_t *sptp   = v     + param->padded_N;    /* 2 polynomials */
+    int64_t *buffer = sptp  + param->padded_N*2;
+
+    challenge (sptp, h, msg, msg_len, param);
 
     /* check norm constrains */
     if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
@@ -267,7 +322,7 @@ int verify(
 
     /* reconstruct u = 2s + u_p */
     for (i=0;i<param->N;i++)
-        u[i] = sig[i]*param->p + msg[i];
+        u[i] = sig[i]*param->p + sptp[i];
 
     /* v = u * h */
     pol_mul_coefficients(v, u, h, param, buffer);
@@ -276,7 +331,7 @@ int verify(
     /* check if v \equiv v_p mod p */
     for (i=0;i<param->N;i++)
     {
-        if ((v[i]-msg[i+param->N]) % param->p != 0)
+        if ((v[i]-sptp[i+param->N]) % param->p != 0)
         {
             printf("congruent condition failed for param %s \nv:\n", param->name);
 
@@ -302,4 +357,5 @@ int verify(
     }
     return 0;
 }
+
 

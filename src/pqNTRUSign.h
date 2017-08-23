@@ -38,7 +38,8 @@ void keygen(
  */
 int sign(
             int64_t     *sig,       /* output - signature  */
-    const   int64_t     *msg,       /* input  - message    */
+    const unsigned char *msg,       /* input  - message    */
+    const   size_t      msg_len,    /* input  - length of msg */
     const   int64_t     *f,         /* input  - secret key */
     const   int64_t     *g,         /* input  - secret key */
     const   int64_t     *g_inv,     /* input  - secret key */
@@ -48,11 +49,12 @@ int sign(
 
 /*
  * verifies a signature, returns 0 if valid
- * buf memory requirement: 5 polynomials.
+ * buf memory requirement: 7 polynomials.
  */
 int verify(
     const   int64_t     *sig,       /* input  - signature  */
-    const   int64_t     *msg,       /* input  - message    */
+    const unsigned char *msg,       /* input  - message    */
+    const   size_t      msg_len,    /* input  - length of msg */
     const   int64_t     *h,         /* input  - public key */
             int64_t     *buf,       /* input  - buffer     */
     const   PQ_PARAM_SET*param);    /* input  - parameters */

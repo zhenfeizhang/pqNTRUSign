@@ -25,6 +25,7 @@
 #include "poly/poly.h"
 #include "pqNTRUSign.h"
 #include "rng/fastrandombytes.h"
+#include "rng/crypto_hash_sha512.h"
 
 /*
  * uncomment VERBOSE to get extra information for testing
@@ -41,7 +42,7 @@ uint64_t rdtsc(){
 int test(PQ_PARAM_SET *param)
 {
 
-    int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig, *mem;
+    int64_t   *f, *g, *g_inv, *h, *buf, *sig, *mem;
 
 
     uint64_t startc, endc, signtime = 0, verifytime = 0;
@@ -51,30 +52,35 @@ int test(PQ_PARAM_SET *param)
     int i =0;
     int counter = 0;
 
+    unsigned char   *msg;
+    unsigned char   *seed   = (unsigned char*) "nist submission";
+    size_t          msg_len = 64;
+
     /* memory to store keys/msgs/ctx */
     mem = malloc (sizeof(int64_t)*param->padded_N * 7);
     /* buffer */
-    buf = malloc (sizeof(int64_t)*param->padded_N * 10);
+    buf = malloc (sizeof(int64_t)*param->padded_N * 11);
+    /* message to be signed */
+    msg = malloc (sizeof(unsigned char)*msg_len);
 
 
-
-    if (!mem || !buf)
+    if (!mem || !buf || !msg)
     {
         printf("malloc error!\n");
         return -1;
     }
 
+    crypto_hash_sha512(msg, seed, msg_len);
 
     memset(mem, 0, sizeof(int64_t)*param->padded_N * 7);
-    memset(buf, 0, sizeof(int64_t)*param->padded_N * 10);
+    memset(buf, 0, sizeof(int64_t)*param->padded_N * 11);
 
 
     f       = mem;
     g       = f     + param->padded_N;
     g_inv   = g     + param->padded_N;
     h       = g_inv + param->padded_N;
-    msg     = h     + param->padded_N;
-    sig     = msg   + param->padded_N*2;
+    sig     = h     + param->padded_N*2;
 
 
     /* generate a set of keys */
@@ -113,8 +119,8 @@ int test(PQ_PARAM_SET *param)
 
 
     /* generate a message vector to sign */
-    pol_gen_flat(msg, param->N, param->d);
-    pol_gen_flat(msg+param->N, param->N, param->d);
+//    pol_gen_flat(msg, param->N, param->d);
+//    pol_gen_flat(msg+param->N, param->N, param->d);
 
     /* sign the msg */
     printf("now signing a message\n");
@@ -128,8 +134,8 @@ int test(PQ_PARAM_SET *param)
     printf("\n");
 #endif
 
-    memset(buf, 0, sizeof(int64_t)*param->N * 10);
-    sign(sig, msg, f,g,g_inv,h,buf,param);
+    memset(buf, 0, sizeof(int64_t)*param->N * 11);
+    sign(sig, msg, msg_len,f,g,g_inv,h,buf,param);
 #ifdef VERBOSE
     printf("the signature is:\n");
     for (i=0;i<param->N;i++)
@@ -140,34 +146,33 @@ int test(PQ_PARAM_SET *param)
 
     printf("now verifying the signature: 0 for valid, -1 for invalid:   ");
     /* verifying the signature */
-    printf("%d \n", verify(sig, msg, h,buf,param));
+    memset(buf, 0, sizeof(int64_t)*param->N * 7);
+    printf("%d \n", verify(sig, msg, msg_len, h,buf,param));
     printf("=====================================\n");
 
     printf("benchmark with signing a set of messages\n");
 
     for (i=0;i<100;i++)
     {
-
-        memset(msg, 0, sizeof(int64_t)*param->N*2);
-        pol_gen_flat(msg, param->N, param->d);
-        pol_gen_flat(msg+param->N, param->N, param->d);
+        /* generate a new message to sign */
+        crypto_hash_sha512(msg, msg, msg_len);
 
         /* sign the msg */
         memset(buf, 0, sizeof(int64_t)*param->N * 10);
         start = clock();
         startc = rdtsc();
-        counter += sign(sig, msg, f,g,g_inv,h,buf,param);
+        counter += sign(sig, msg,msg_len, f,g,g_inv,h,buf,param);
         endc = rdtsc();
         end = clock();
         cpu_time_used1 += (end-start);
         signtime += (endc-startc);
 
         /* verifying the signature */
-        memset(buf, 0, sizeof(int64_t)*param->N * 5);
+        memset(buf, 0, sizeof(int64_t)*param->N * 7);
         startc = rdtsc();
         start = clock();
 
-        if(verify(sig, msg, h,buf,param)!=0)
+        if(verify(sig, msg,msg_len, h,buf,param)!=0)
             printf("%d verification error\n", i);
         end = clock();
         cpu_time_used2 += (end-start);
@@ -177,8 +182,6 @@ int test(PQ_PARAM_SET *param)
     printf("it takes %d samples to generate %d number of signatures!\n", counter, i);
     printf("average signing time: %f clock cycles or %f seconds!\n", (double)signtime/i, cpu_time_used1/i/CLOCKS_PER_SEC);
     printf("average verification time:  %f clock cycles or %f seconds!\n", (double)verifytime/i, cpu_time_used2/i/CLOCKS_PER_SEC);
-
-
 
     free(mem);
     free(buf);
