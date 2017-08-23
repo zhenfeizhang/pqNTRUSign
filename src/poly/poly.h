@@ -38,16 +38,14 @@ void DGS (
     const uint16_t  N,
     const uint8_t   stdev);
 
-/* Uniform random element of pZ^n, v, such that
- * v_i + (p-1)/2 <= (q-1)/2
- * v_i - (p-1)/2 >= -(q-1)/2
+/*
+ * Uniform random element of Z^n mod q
  */
 void
-pol_unidrnd_pZ(
-          int64_t   *v,
-    const uint16_t   N,
-    const int64_t    q,
-    const int8_t     p);
+pol_unidrnd(
+    int64_t          *v,
+    const int16_t    N,
+    const int64_t    q);
 
 
 void NTT(
@@ -61,7 +59,8 @@ void Inv_NTT(
     const int64_t       *f_ntt);
 
 
-int64_t max_norm(const int64_t *f, const int16_t N);
+int64_t
+max_norm(const int64_t *f, const int16_t N);
 
 
 void
@@ -73,7 +72,7 @@ pol_mul_coefficients(
      int64_t         *tmp);
 
 void
-pol_mul_mod_2(
+pol_mul_mod_p(
      int64_t         *c,       /* out - address for polynomial c */
      const int64_t   *a,       /*  in - pointer to polynomial a */
      const int64_t   *b,       /*  in - pointer to polynomial b */

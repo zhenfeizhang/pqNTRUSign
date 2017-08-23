@@ -140,7 +140,33 @@ pol_unidrnd_pZ(
   return;
 }
 
+/* Uniform random element of pZ^n, v, such that
+ * v_i + (p-1)/2 <= (q-1)/2
+ * v_i - (p-1)/2 >= -(q-1)/2
+ */
+void
+pol_unidrnd(
+    int64_t          *v,
+    const int16_t    N,
+    const int64_t    q)
+{
+  int16_t i = 0;
+  uint64_t r = 0;
 
+  int64_t range = q;
+  int64_t center = q/2;
+
+  int64_t rndcap = (UINT64_MAX - (UINT64_MAX % range));
+
+  while(i < N) {
+    rng_uint64(&r);
+    if(r < rndcap) {
+      v[i] = ((int64_t)(r % range) - center);
+      ++i;
+    }
+  }
+  return;
+}
 
 int
 pol_inv_mod2(
@@ -411,12 +437,14 @@ pol_mul_coefficients(
     memset(res, 0, 2*param->N*sizeof(int64_t));
     karatsuba(res, scratch, a, b, param->padded_N);
 
-    if (param->id == Guassian_512_107)
+    /* x^N + 1 ring */
+    if (param->id == Gaussian_512_107 || param->id == uniform_512_107)
     {
         for(i=0; i<param->N; i++)
             c[i] = cmod(res[i] - res[i+param->N], param->q);
     }
-    else if (param->id == Guassian_761_107)
+    /* x^N - 1 ring */
+    else if (param->id == Gaussian_761_107 || param->id == uniform_761_107)
     {
         for(i=0; i<param->N; i++)
             c[i] = cmod(res[i] + res[i+param->N], param->q);
@@ -424,7 +452,7 @@ pol_mul_coefficients(
 }
 
 void
-pol_mul_mod_2(
+pol_mul_mod_p(
      int64_t         *c,       /* out - address for polynomial c */
      const int64_t   *a,       /*  in - pointer to polynomial a */
      const int64_t   *b,       /*  in - pointer to polynomial b */
@@ -437,15 +465,17 @@ pol_mul_mod_2(
     memset(res, 0, 2*param->N*sizeof(int64_t));
     karatsuba(res, scratch, a, b, param->padded_N);
 
-    if (param->id == Guassian_512_107)
+    /* x^N + 1 ring */
+    if (param->id == Gaussian_512_107 || param->id == uniform_512_107)
     {
         for(i=0; i<param->N; i++)
-            c[i] = cmod(res[i] - res[i+param->N], 2);
+            c[i] = cmod(res[i] - res[i+param->N], param->p);
     }
-    else if (param->id == Guassian_761_107)
+    /* x^N - 1 ring */
+    else if (param->id == Gaussian_761_107 || param->id == uniform_761_107)
     {
         for(i=0; i<param->N; i++)
-            c[i] = cmod(res[i] + res[i+param->N], 2);
+            c[i] = cmod(res[i] + res[i+param->N], param->p);
     }
 }
 

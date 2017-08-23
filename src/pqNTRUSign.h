@@ -14,14 +14,14 @@
  *  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef GAUSSIAN_PQNTRUSIGN_H_
-#define GAUSSIAN_PQNTRUSIGN_H_
+#ifndef PQNTRUSIGN_H_
+#define PQNTRUSIGN_H_
 #include "param.h"
 
 
 /*
  * generate a set of private/public key pairs.
- * requires a buffer for 3 padded polynomials
+ * requires a buffer for 4 padded polynomials
  */
 void keygen(
             int64_t     *f,         /* output - secret key */
@@ -57,4 +57,4 @@ int verify(
             int64_t     *buf,       /* input  - buffer     */
     const   PQ_PARAM_SET*param);    /* input  - parameters */
 
-#endif /* GAUSSIAN_PQNTRUSIGN_H_ */
+#endif /* PQNTRUSIGN_H_ */

@@ -23,32 +23,35 @@ typedef const struct _PQ_PARAM_SET  PQ_PARAM_SET;
 
 enum _PQ_PARAM_SET_ID {
     /* method - dimention - deviation */
-    Guassian_512_107,
-    Guassian_761_107,
+    Gaussian_512_107,
+    Gaussian_761_107,
+    uniform_512_107,
+    uniform_761_107,
 };
 
 
 struct _PQ_PARAM_SET {
-  PQ_PARAM_SET_ID  id;          /* parameter set id */
-  const char       *name;       /* human readable name */
-  const uint8_t    OID[3];      /* OID */
-  uint8_t          N_bits;      /* ceil(log2(N)) */
-  uint8_t          q_bits;      /* ceil(log2(q)) */
-  const uint16_t   N;           /* ring degree */
-  int8_t           p;           /* message space prime */
-  int64_t          q;           /* ring modulus */
-  int64_t          B_s;         /* max l2 norm of f*a convolution */
-  int64_t          B_t;         /* max infty norm of g*a convolution */
-  int64_t          norm_bound_t;/* q/2 - B_t */
-  double           Ms;          /* rejection rate on s side */
-  const uint16_t   d;           /* Flat form +1/-1 counts */
-  uint16_t         padded_N;    /* # Polynomial coefficients for Karatsuba */
-  uint16_t         stdev;
+    PQ_PARAM_SET_ID  id;          /* parameter set id */
+    const char       *name;       /* human readable name */
+    const uint8_t    OID[3];      /* OID */
+    uint8_t          N_bits;      /* ceil(log2(N)) */
+    uint8_t          q_bits;      /* ceil(log2(q)) */
+    const uint16_t   N;           /* ring degree */
+    int8_t           p;           /* message space prime */
+    int64_t          q;           /* ring modulus */
+    int64_t          B_s;         /* max l2 norm of f*a convolution (Gaussian only) */
+    int64_t          B_t;         /* max infty norm of g*a convolution */
+    int64_t          norm_bound_s;/* (q/2 - B_t)/p */
+    int64_t          norm_bound_t;/* q/2 - B_t */
+    double           Ms;          /* rejection rate on s side */
+    const uint16_t   d;           /* Flat form +1/-1 counts */
+    uint16_t         padded_N;    /* # Polynomial coefficients for Karatsuba */
+    uint16_t         stdev;
 
-  /* NTT param */
-  int64_t          *roots;
-  int64_t          *inv_roots;
-  int64_t          inv_N;
+    /* NTT param */
+    int64_t          *roots;
+    int64_t          *inv_roots;
+    int64_t          inv_N;
 };
 
 PQ_PARAM_SET *

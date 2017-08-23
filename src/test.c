@@ -21,9 +21,15 @@
 #include <string.h>
 #include <time.h>
 
-#include "Gaussian-pqNTRUSign.h"
 #include "param.h"
 #include "poly/poly.h"
+#include "pqNTRUSign.h"
+#include "rng/fastrandombytes.h"
+
+/*
+ * uncomment VERBOSE to get extra information for testing
+ * #define VERBOSE
+ */
 
 
 uint64_t rdtsc(){
@@ -32,17 +38,16 @@ uint64_t rdtsc(){
     return ((uint64_t)hi << 32) | lo;
 }
 
-
-int main(void) {
+int test(PQ_PARAM_SET *param)
+{
 
     int64_t   *f, *g, *g_inv, *h, *buf, *msg, *sig, *mem;
-    PQ_PARAM_SET *param = pq_get_param_set_by_id(Guassian_761_107);
+
+
     uint64_t startc, endc, signtime = 0, verifytime = 0;
     clock_t start, end;
     double cpu_time_used1;
     double cpu_time_used2;
-
-
     int i =0;
     int counter = 0;
 
@@ -51,11 +56,18 @@ int main(void) {
     /* buffer */
     buf = malloc (sizeof(int64_t)*param->padded_N * 10);
 
+
+
     if (!mem || !buf)
     {
         printf("malloc error!\n");
         return -1;
     }
+
+
+    memset(mem, 0, sizeof(int64_t)*param->padded_N * 7);
+    memset(buf, 0, sizeof(int64_t)*param->padded_N * 10);
+
 
     f       = mem;
     g       = f     + param->padded_N;
@@ -67,14 +79,21 @@ int main(void) {
 
     /* generate a set of keys */
     printf("=====================================\n");
-    printf("begin a single signing procedure\n");
-    printf("start key generation\n");
+    printf("=====================================\n");
+    printf("=====================================\n");
+    printf("testing parameter set %s \n", param->name);
 
-    memset(buf, 0, sizeof(int64_t)*param->N * 3);
+
+    printf("begin a single signing procedure\n");
+
+
+
+
+    memset(buf, 0, sizeof(int64_t)*param->padded_N * 4);
     keygen(f,g,g_inv,h,buf,param);
 
-
-
+#ifdef VERBOSE
+    printf("start key generation\n");
     printf("f:\n");
     for (i=0;i<param->padded_N;i++)
         printf("%lld,",(long long)f[i]);
@@ -90,7 +109,7 @@ int main(void) {
     printf("\n");
     printf("finished key generation\n");
     printf("=====================================\n");
-
+#endif
 
 
     /* generate a message vector to sign */
@@ -99,21 +118,24 @@ int main(void) {
 
     /* sign the msg */
     printf("now signing a message\n");
+
+#ifdef VERBOSE
     for (i=0;i<param->N;i++)
         printf("%lld,",(long long)msg[i]);
     printf("\n");
     for (;i<param->padded_N*2;i++)
         printf("%lld,",(long long)msg[i]);
     printf("\n");
-
+#endif
 
     memset(buf, 0, sizeof(int64_t)*param->N * 10);
     sign(sig, msg, f,g,g_inv,h,buf,param);
+#ifdef VERBOSE
     printf("the signature is:\n");
     for (i=0;i<param->N;i++)
         printf("%lld,",(long long)sig[i]);
     printf("\n");
-
+#endif
     printf("=====================================\n");
 
     printf("now verifying the signature: 0 for valid, -1 for invalid:   ");
@@ -157,9 +179,33 @@ int main(void) {
     printf("average verification time:  %f clock cycles or %f seconds!\n", (double)verifytime/i, cpu_time_used2/i/CLOCKS_PER_SEC);
 
 
+
     free(mem);
     free(buf);
-	return EXIT_SUCCESS;
+	return 0;
 }
 
+int main(void)
+{
+
+    uint16_t i;
+    PQ_PARAM_SET_ID plist[] =
+    {
+        uniform_512_107,
+        uniform_761_107,
+        Gaussian_512_107,
+        Gaussian_761_107,
+    };
+    size_t numParams = sizeof(plist)/sizeof(PQ_PARAM_SET_ID);
+
+    for(i = 0; i<numParams; i++)
+    {
+      test(pq_get_param_set_by_id(plist[i]));
+    }
+
+    rng_cleanup();
+
+    exit(EXIT_SUCCESS);
+
+}
 

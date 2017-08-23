@@ -26,7 +26,7 @@
 
 /*
  * generate a set of private/public key pairs.
- * requires a buffer for 3 padded polynomials
+ * requires a buffer for 4 padded polynomials
  */
 
 void keygen(
@@ -41,7 +41,7 @@ void keygen(
     int64_t *fntt = buf;
     int64_t *gntt = buf  + param->padded_N;
     int64_t *hntt = gntt + param->padded_N;
-    int64_t *tmp  = hntt;
+    int64_t *tmp  = hntt + param->padded_N;  ;
 
 
     memset(buf, 0, sizeof(int64_t)*param->padded_N*4);
@@ -53,7 +53,6 @@ void keygen(
     do{
         pol_gen_flat(g, param->N, param->d);
     }while (pol_inv_mod2(g_inv, g, param->N) == -1);
-
 
     /* set f = pf */
     for (i=0;i<param->N;i++)
@@ -143,38 +142,48 @@ int sign(
     int64_t *a      = v      +  param->padded_N;
     int64_t *b      = a      +  param->padded_N;
     int64_t *buffer = b      +  param->padded_N;
-    int bit     = 0;    /* flipping bit for bimodal Gaussian */
-    int counter = 0;    /* number of samples to get a signature */
+    int     bit     = 0;    /* flip a bit for bimodal Gaussian */
+    int     counter = 0;    /* number of samples to get a signature */
 
     sample:
         if(counter>100)
         {
-            printf ("signng failed\n");
+            printf ("signing failed\n");
             return -1;
         }
-        memset(buffer, 0, sizeof(int64_t)*param->padded_N*3);
-
-        /* sample from discrete Gaussian */
-        DGS(r, param->N, param->stdev);
-
-        /* flipping bit for bimodal Gaussian */
-        bit = rand()%2;
-        if (bit==0) bit = -1;
 
         counter = counter+1;
+        memset(buffer, 0, sizeof(int64_t)*param->padded_N*3);
 
-        /* u1 = 2*r + u0 */
+        /* sample r from discrete Gaussian and b from binary*/
+        if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
+        {
+            DGS(r, param->N, param->stdev);
+            /* flipping bit for bimodal Gaussian */
+            bit = rand()%2;
+            if (bit==0)
+                bit = -1;
+        }
+        /* or sample r from uniform and set b = 1*/
+        else if (param->id== uniform_512_107 || param->id==uniform_761_107)
+        {
+            pol_unidrnd(r,param->N,param->q/param->p);
+            bit = 1;
+        }
+
+
+        /* u1 = p*r + u0 */
         for (i=0;i<param->N;i++)
-            u1[i] = r[i]*2+msg[i];
+            u1[i] = r[i]*param->p+msg[i];
 
         /* v1 = u1 * h */
         pol_mul_coefficients( v1, h, u1, param, buffer);
 
-        /* a = (v0-v1)/g */
+        /* a = (v0-v1)/g  mod p*/
         for (i=0;i<param->N;i++)
-            a[i] = cmod(msg[i+param->N]-v1[i], 2);
+            a[i] = cmod(msg[i+param->N]-v1[i], param->p);
 
-        pol_mul_mod_2(a, a, g_inv, param, buffer);
+        pol_mul_mod_p(a, a, g_inv, param, buffer);
 
         /* v= v1+ag */
         pol_mul_coefficients(v, a, g, param, buffer);
@@ -198,10 +207,22 @@ int sign(
         for (i=0;i<param->N;i++)
             sig[i] = r[i] + bit * b[i];
 
-        /* rejection sampling to make signature into a Gaussian */
-        if (rejection_sampling(b, sig, param) == 0)
+        /* now perform rejection sampling on Gaussian*/
+        if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
         {
-            goto sample;
+            /* rejection sampling to make signature into a Gaussian */
+            if (rejection_sampling(b, sig, param) == 0)
+            {
+                goto sample;
+            }
+        }
+        else if (param->id== uniform_512_107 || param->id==uniform_761_107)
+        {
+            /* rejection sampling to make signature into a uniform */
+            if (max_norm(sig, param->N)>param->norm_bound_s)
+            {
+                goto sample;
+            }
         }
 
     return counter;
@@ -223,27 +244,59 @@ int verify(
     int64_t *v      = u      +param->padded_N;
     int64_t *buffer = v      +param->padded_N;
 
-    /* check if |s| is smaller than sigma*11 */
-    if (max_norm(sig, param->N)>param->stdev*11)
+    /* check norm constrains */
+    if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
     {
-        printf("max norm failed\n");
-        return -1;
+        /* check if |s| is smaller than sigma*11 */
+        if (max_norm(sig, param->N)>param->stdev*11)
+        {
+            printf("max norm failed\n");
+            return -1;
+        }
     }
+    else if (param->id== uniform_512_107 || param->id==uniform_761_107)
+    {
+        /* check if |s| is smaller than norm_bound_t */
+        if (max_norm(sig, param->N)>param->norm_bound_s)
+        {
+            printf("max norm failed\n");
+            return -1;
+        }
+    }
+
 
     /* reconstruct u = 2s + u_p */
     for (i=0;i<param->N;i++)
-        u[i] = sig[i]*2 + msg[i];
+        u[i] = sig[i]*param->p + msg[i];
 
     /* v = u * h */
     pol_mul_coefficients(v, u, h, param, buffer);
 
 
-    /* check if v \equiv v_p mod 2 */
+    /* check if v \equiv v_p mod p */
     for (i=0;i<param->N;i++)
     {
-        if ((v[i]-msg[i+param->N]) % 2 ==1)
+        if ((v[i]-msg[i+param->N]) % param->p != 0)
         {
-            printf("congruent condition failed\nv:\n");
+            printf("congruent condition failed for param %s \nv:\n", param->name);
+
+            printf("sig:\n");
+            for (i=0;i<param->padded_N;i++)
+                printf("%lld,", (long long) sig[i]);
+            printf("\nu:\n");
+            for (i=0;i<param->padded_N;i++)
+                printf("%lld,", (long long) u[i]);
+            printf("\nv:\n");
+            for (i=0;i<param->padded_N;i++)
+                printf("%lld,", (long long) v[i]);
+            printf("\nh:\n");
+            for (i=0;i<param->padded_N;i++)
+                printf("%lld,", (long long) h[i]);
+            printf("\nmsg:\n");
+            for (i=0;i<param->padded_N;i++)
+                printf("%lld, ", (long long) msg[i+param->N]);
+            printf("\n\n");
+
             return -1;
         }
     }
