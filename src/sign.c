@@ -65,7 +65,6 @@ int crypto_sign(
 
     int64_t         *mem, *buf;
     int64_t         *f, *g, *g_inv, *h, *sig;
-    int i;
 
     buf = malloc(sizeof(int64_t)*param->padded_N*11);
     mem = malloc(sizeof(int64_t)*param->padded_N*5);
@@ -75,6 +74,8 @@ int crypto_sign(
         printf("malloc error!\n");
         return -1;
     }
+    memset(buf,0, sizeof(int64_t)*param->padded_N*11);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*5);
 
     f       = mem;
     g       = f     + param->padded_N;
@@ -84,35 +85,13 @@ int crypto_sign(
     unpack_secret_key(sk, param, f, g, g_inv, h);
 
 
-
-    printf("start key generation\n");
-    printf("f:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)f[i]);
-    printf("\ng:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,", (long long)g[i]);
-    printf("\ng_inv:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)g_inv[i]);
-    printf("\nh:\n");
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)h[i]);
-    printf("\n");
-    printf("finished key generation\n");
-    printf("=====================================\n");
-
-
     sign(sig, m,mlen, f,g,g_inv,h,buf,param);
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)sig[i]);
-    printf("\n");
 
     pack_public_key(sm, param, sig);
     *smlen = param->N*4+1;
 
-    printf("finished\n");
-
+    memset(buf,0, sizeof(int64_t)*param->padded_N*11);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*5);
     free(mem);
     free(buf);
 
@@ -127,13 +106,11 @@ int crypto_sign_open(
     const unsigned char *pk)
 {
 
-
     PQ_PARAM_SET    *param;
     param           = pq_get_param_set_by_id(TEST_PARAM_SET);
 
     int64_t         *mem, *buf;
     int64_t         *f, *g, *g_inv, *h, *sig;
-    int i;
 
     buf = malloc(sizeof(int64_t)*param->padded_N*7);
     mem = malloc(sizeof(int64_t)*param->padded_N*5);
@@ -143,28 +120,44 @@ int crypto_sign_open(
         printf("malloc error!\n");
         return -1;
     }
+    memset(buf,0, sizeof(int64_t)*param->padded_N*7);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*5);
 
     f       = mem;
     g       = f     + param->padded_N;
     g_inv   = g     + param->padded_N;
     h       = g_inv + param->padded_N;
     sig     = h     + param->padded_N;
+
+
     unpack_public_key(pk, param,  h);
+
     unpack_public_key(sm, param,  sig);
 
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)sig[i]);
-    printf("\n");
-
-    for (i=0;i<param->padded_N;i++)
-        printf("%lld,",(long long)h[i]);
-    printf("\n");
-
     if(verify(sig, m, *mlen, h,buf,param)!=0)
-        printf("%d verification error\n", i);
+    {
+        printf("verification error\n");
+
+        memset(buf,0, sizeof(int64_t)*param->padded_N*7);
+        memset(mem,0, sizeof(int64_t)*param->padded_N*5);
+
+        free(buf);
+        free(mem);
+        return -1;
+    }
+
     else
+    {
         printf("signature verified\n");
-    return 0;
+
+        memset(buf,0, sizeof(int64_t)*param->padded_N*7);
+        memset(mem,0, sizeof(int64_t)*param->padded_N*5);
+
+        free(buf);
+        free(mem);
+
+        return 0;
+    }
 }
 
 int crypto_sign_keypair_KAT(
@@ -189,6 +182,9 @@ int crypto_sign_keypair_KAT(
         printf("malloc error!\n");
         return -1;
     }
+
+    memset(buf,0, sizeof(int64_t)*param->padded_N*4);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*4);
 
     f       = mem;
     g       = f     + param->padded_N;
@@ -234,14 +230,16 @@ int crypto_sign_KAT(
     int64_t         *mem, *buf;
     int64_t         *f, *g, *g_inv, *h, *sig;
 
-    buf = malloc(sizeof(int64_t)*param->padded_N*11);
-    mem = malloc(sizeof(int64_t)*param->padded_N*5);
+    buf     = malloc(sizeof(int64_t)*param->padded_N*11);
+    mem     = malloc(sizeof(int64_t)*param->padded_N*5);
     seed    = malloc(LENGTH_OF_HASH);
     if (!buf ||!mem || !seed)
     {
       printf("malloc error!\n");
       return -1;
     }
+    memset(buf,0, sizeof(int64_t)*param->padded_N*11);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*5);
 
     f       = mem;
     g       = f     + param->padded_N;
@@ -260,9 +258,11 @@ int crypto_sign_KAT(
 
 
     pack_public_key(sm, param, sig);
+
     *smlen = param->N*4+1;
-
-
+    memset(buf,0, sizeof(int64_t)*param->padded_N*11);
+    memset(mem,0, sizeof(int64_t)*param->padded_N*5);
+    memset(seed,0, LENGTH_OF_HASH);
     free(mem);
     free(buf);
     free(seed);

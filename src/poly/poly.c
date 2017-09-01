@@ -181,19 +181,17 @@ pol_unidrnd_with_seed(
     unsigned char    *seed,
     const int16_t    seed_len)
 {
-  int16_t i = 0,j=0;
-  uint64_t r = 0;
-
-  int64_t range = q;
-  int64_t center = q/2;
-
-  int64_t rndcap = (UINT64_MAX - (UINT64_MAX % range));
-
+  int16_t   i = 0,j=0;
+  uint64_t  r       = 0;
+  uint64_t  *ptr    = (uint64_t*) seed;
+  int64_t   range   = q;
+  int64_t   center  = q/2;
+  int64_t   rndcap  = (UINT64_MAX - (UINT64_MAX % range));
 
   crypto_hash_sha512(seed, seed, seed_len);
 
   while(i < N) {
-    r = seed[j++];
+    r = ptr[j++];
     if(j==8)
     {
         crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);

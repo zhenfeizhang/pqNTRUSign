@@ -196,6 +196,7 @@ int test(PQ_PARAM_SET *param)
     printf("average signing time: %f clock cycles or %f seconds!\n", (double)signtime/i, cpu_time_used1/i/CLOCKS_PER_SEC);
     printf("average verification time:  %f clock cycles or %f seconds!\n", (double)verifytime/i, cpu_time_used2/i/CLOCKS_PER_SEC);
 
+    free(msg);
     free(mem);
     free(buf);
 	return 0;
@@ -219,7 +220,8 @@ int test_basic(void)
     }
 
     rng_cleanup();
-    exit(EXIT_SUCCESS);
+    return 0;
+
 }
 
 int test_nist_api()
@@ -243,12 +245,19 @@ int test_nist_api()
     printf("=====================================\n");
     printf("=====================================\n");
     printf("=====================================\n");
+    printf("testing NIST API\n");
+
 
     int i=0;
     crypto_sign_keypair(pk, sk);
 
-    printf("key generated, public key:\n");
+    printf("key generated, public key (first 32 bytes):\n");
 
+    for(i=0;i<32;i++)
+        printf("%d,",pk[i]);
+    printf("\n");
+
+    printf("and secret key (first 32 bytes):\n");
     for(i=0;i<32;i++)
         printf("%d,",sk[i]);
     printf("\n");
@@ -257,13 +266,17 @@ int test_nist_api()
 
     crypto_sign(sig, &siglen, msg, mlen, sk);
 
-    printf("signature of length %d:", (int)siglen);
+    printf("signature of length %d:\n", (int)siglen);
     for(i=0;i<32;i++)
         printf("%d,",sig[i]);
     printf("\n");
     printf("check correctness\n");
     crypto_sign_open( msg, &mlen, sig, siglen, pk);
 
+
+    free(pk);
+    free(sk);
+    free(sig);
     return 0;
 
 }
@@ -293,21 +306,28 @@ int test_nist_api_KAT()
     printf("=====================================\n");
     printf("=====================================\n");
     printf("=====================================\n");
+    printf("testing NIST API with KAT string %s: \n", rndness);
 
     crypto_sign_keypair_KAT(pk, sk, rndness);
 
 
-    printf("key generated, public key:\n");
+    printf("key generated, public key (first 32 bytes):\n");
 
     for(i=0;i<32;i++)
-    printf("%d,",pk[i]);
+        printf("%d,",pk[i]);
     printf("\n");
+
+    printf("and secret key (first 32 bytes):\n");
+    for(i=0;i<32;i++)
+        printf("%d,",sk[i]);
+    printf("\n");
+
     printf("begin a single signing procedure\n");
 
     crypto_sign_KAT(sig, &siglen, msg, mlen, sk, rndness);
 
 
-    printf("signature of length %d:", (int)siglen);
+    printf("signature of length %d:\n", (int)siglen);
     for(i=0;i<32;i++)
         printf("%d,",sig[i]);
     printf("\n");
@@ -315,6 +335,10 @@ int test_nist_api_KAT()
     printf("check correctness\n");
     crypto_sign_open(msg, &mlen, sig, siglen, pk);
 
+
+    free(pk);
+    free(sk);
+    free(sig);
     return 0;
 
 }
@@ -323,9 +347,10 @@ int test_nist_api_KAT()
 
 int main(void)
 {
-//    test_basic();
+    test_basic();
     test_nist_api();
     test_nist_api_KAT();
 
-    printf("Hello onboard security\n");
+    printf("\n\n!!!Hello onboard security!!!\n");
+    exit(EXIT_SUCCESS);
 }
