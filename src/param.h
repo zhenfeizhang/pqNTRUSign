@@ -18,8 +18,13 @@
 #define PARAM_H_
 #include <stdint.h>
 
+
+#define LENGTH_OF_HASH 64
+
 typedef enum _PQ_PARAM_SET_ID PQ_PARAM_SET_ID;
 typedef const struct _PQ_PARAM_SET  PQ_PARAM_SET;
+
+
 
 enum _PQ_PARAM_SET_ID {
     /* method - dimention - deviation */

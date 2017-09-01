@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "../rng/fastrandombytes.h"
-
+#include "../rng/crypto_hash_sha512.h"
 /*  todo: replace this sampler with a better one.
  *  Preferably faster, constant time, more precisions*/
 
@@ -54,4 +54,40 @@ void DGS (      int64_t   *v,
         rr = sqrt(-2.0*log(r2))*stdev;
         v[dim-1] = (int64_t) floor(rr*sin(theta) + 0.5);
     }
+}
+
+
+/* deterministic DGS */
+void DDGS (      int64_t  *v,
+          const uint16_t  dim,
+          const uint64_t  stdev,
+          unsigned char   *seed,
+                  size_t  seed_len)
+{
+    uint16_t i,j;
+    uint32_t *t;
+
+    static double const Pi=3.141592653589793238462643383279502884L;
+    static long const bignum = 0xfffffff;
+    double r1, r2, theta, rr;
+
+    unsigned char pool[64];
+    crypto_hash_sha512(pool, seed, seed_len);
+    t = (uint32_t*) pool;
+    for (i=0;i<64;i++)
+    {
+
+        for (j=0;j<8;j++)
+        {
+            r1 = (1+(t[j*2]     &bignum))/((double)bignum+1);
+            r2 = (1+(t[j*2+1]   &bignum))/((double)bignum+1);
+            theta = 2*Pi*r1;
+            rr = sqrt(-2.0*log(r2))*stdev;
+            v[i*16+j*2]      = (int64_t) floor(rr*sin(theta) + 0.5);
+            v[i*16+j*2+1]    = (int64_t) floor(rr*cos(theta) + 0.5);
+        }
+        /* update the pool */
+        crypto_hash_sha512(pool, pool, 64);
+    }
+
 }

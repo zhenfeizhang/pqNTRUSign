@@ -32,6 +32,28 @@ void keygen(
     const   PQ_PARAM_SET*param);    /* input  - parameters */
 
 /*
+ * generate a set of private/public key pairs.
+ * requires a buffer for 4 padded polynomials
+ */
+
+void keygen_KAT(
+            int64_t     *f,         /* output - secret key */
+            int64_t     *g,         /* output - secret key */
+            int64_t     *g_inv,     /* output - secret key */
+            int64_t     *h,         /* output - public key */
+            int64_t     *buf,       /* input  - buffer     */
+    const   PQ_PARAM_SET*param,     /* input  - parameters */
+    unsigned char       *seed);
+
+int
+challenge(
+            int64_t         *msg_dig,       /* output message digest */
+    const   int64_t         *public_key,    /* input public key h */
+    const   unsigned char   *msg,           /* input message */
+    const   size_t          msg_len,        /* input message length */
+    const   PQ_PARAM_SET    *param);         /* input  - parameters */
+
+/*
  * sign a message using rejection sampling method
  * returns the number of repetitions
  * buf memory requirement: 10 polynomials.
@@ -46,6 +68,24 @@ int sign(
     const   int64_t     *h,         /* input  - public key */
             int64_t     *buf,       /* input  - buffer     */
     const   PQ_PARAM_SET*param);    /* input  - parameters */
+
+
+/*
+ * sign a message using rejection sampling method
+ * returns the number of repetitions
+ * buf memory requirement: 11 polynomials.
+ */
+int sign_KAT(
+            int64_t     *sig,       /* output - signature  */
+    const unsigned char *msg,       /* input  - message    */
+    const   size_t      msg_len,    /* input  - length of msg */
+    const   int64_t     *f,         /* input  - secret key */
+    const   int64_t     *g,         /* input  - secret key */
+    const   int64_t     *g_inv,     /* input  - secret key */
+    const   int64_t     *h,         /* input  - public key */
+            int64_t     *buf,       /* input  - buffer     */
+    const   PQ_PARAM_SET*param,     /* input  - parameters */
+    unsigned char       *seed);
 
 /*
  * verifies a signature, returns 0 if valid

@@ -38,6 +38,13 @@ void DGS (
     const uint16_t  N,
     const uint8_t   stdev);
 
+/* deterministic DGS */
+void DDGS (      int64_t  *v,
+          const uint16_t  dim,
+          const uint64_t  stdev,
+          unsigned char   *seed,
+                  size_t  seed_len);
+
 /*
  * Uniform random element of Z^n mod q
  */
@@ -47,6 +54,13 @@ pol_unidrnd(
     const int16_t    N,
     const int64_t    q);
 
+void
+pol_unidrnd_with_seed(
+    int64_t          *v,
+    const int16_t    N,
+    const int64_t    q,
+    unsigned char    *seed,
+    const int16_t    seed_len);
 
 void NTT(
     const PQ_PARAM_SET  *param,

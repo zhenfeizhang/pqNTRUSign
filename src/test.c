@@ -26,11 +26,24 @@
 #include "pqNTRUSign.h"
 #include "rng/fastrandombytes.h"
 #include "rng/crypto_hash_sha512.h"
+#include "api.h"
 
 /*
  * uncomment VERBOSE to get extra information for testing
  * #define VERBOSE
  */
+
+
+unsigned char   rndness[32] = "source of randomness";
+unsigned char   msg[32]     = "nist submission";
+
+int get_len(unsigned char *c)
+{
+    int len = 0;
+    while(c[len]!='\0')
+        len++;
+    return len;
+}
 
 
 uint64_t rdtsc(){
@@ -188,9 +201,8 @@ int test(PQ_PARAM_SET *param)
 	return 0;
 }
 
-int main(void)
+int test_basic(void)
 {
-
     uint16_t i;
     PQ_PARAM_SET_ID plist[] =
     {
@@ -207,8 +219,113 @@ int main(void)
     }
 
     rng_cleanup();
-
     exit(EXIT_SUCCESS);
+}
+
+int test_nist_api()
+{
+
+
+    unsigned char       *sig;
+    unsigned char       *pk, *sk;
+    unsigned long long  siglen;
+    unsigned long long  mlen;
+
+    pk  = malloc(sizeof(unsigned char)* 5000);
+    sk  = malloc(sizeof(unsigned char)* 10000);
+    sig = malloc(sizeof(unsigned char)* 5000);
+
+
+    mlen = get_len(msg);
+
+
+    /* generate a set of keys */
+    printf("=====================================\n");
+    printf("=====================================\n");
+    printf("=====================================\n");
+
+    int i=0;
+    crypto_sign_keypair(pk, sk);
+
+    printf("key generated, public key:\n");
+
+    for(i=0;i<32;i++)
+        printf("%d,",sk[i]);
+    printf("\n");
+
+    printf("begin a single signing procedure\n");
+
+    crypto_sign(sig, &siglen, msg, mlen, sk);
+
+    printf("signature of length %d:", (int)siglen);
+    for(i=0;i<32;i++)
+        printf("%d,",sig[i]);
+    printf("\n");
+    printf("check correctness\n");
+    crypto_sign_open( msg, &mlen, sig, siglen, pk);
+
+    return 0;
 
 }
 
+int test_nist_api_KAT()
+{
+
+    int i;
+    unsigned char       *sig;
+    unsigned char       *pk, *sk;
+    unsigned long long  siglen;
+    unsigned long long  mlen;
+
+    pk  = malloc(sizeof(unsigned char)* 5000);
+    sk  = malloc(sizeof(unsigned char)* 10000);
+    sig = malloc(sizeof(unsigned char)* 5000);
+
+
+
+    mlen = get_len(msg);
+
+
+
+
+
+    /* generate a set of keys */
+    printf("=====================================\n");
+    printf("=====================================\n");
+    printf("=====================================\n");
+
+    crypto_sign_keypair_KAT(pk, sk, rndness);
+
+
+    printf("key generated, public key:\n");
+
+    for(i=0;i<32;i++)
+    printf("%d,",pk[i]);
+    printf("\n");
+    printf("begin a single signing procedure\n");
+
+    crypto_sign_KAT(sig, &siglen, msg, mlen, sk, rndness);
+
+
+    printf("signature of length %d:", (int)siglen);
+    for(i=0;i<32;i++)
+        printf("%d,",sig[i]);
+    printf("\n");
+
+    printf("check correctness\n");
+    crypto_sign_open(msg, &mlen, sig, siglen, pk);
+
+    return 0;
+
+}
+
+
+
+int main(void)
+{
+//    test_basic();
+    test_nist_api();
+    test_nist_api_KAT();
+
+    printf("Hello onboard security\n");
+}

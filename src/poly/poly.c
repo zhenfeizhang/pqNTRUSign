@@ -18,6 +18,7 @@
 #include <string.h>
 #include "../rng/fastrandombytes.h"
 #include "../rng/shred.h"
+#include "../rng/crypto_hash_sha512.h"
 #include "../param.h"
 int is_balance(const int64_t *f, const int16_t N)
 {
@@ -160,6 +161,45 @@ pol_unidrnd(
 
   while(i < N) {
     rng_uint64(&r);
+    if(r < rndcap) {
+      v[i] = ((int64_t)(r % range) - center);
+      ++i;
+    }
+  }
+  return;
+}
+
+/* Uniform random element of pZ^n, v, such that
+ * v_i + (p-1)/2 <= (q-1)/2
+ * v_i - (p-1)/2 >= -(q-1)/2
+ */
+void
+pol_unidrnd_with_seed(
+    int64_t          *v,
+    const int16_t    N,
+    const int64_t    q,
+    unsigned char    *seed,
+    const int16_t    seed_len)
+{
+  int16_t i = 0,j=0;
+  uint64_t r = 0;
+
+  int64_t range = q;
+  int64_t center = q/2;
+
+  int64_t rndcap = (UINT64_MAX - (UINT64_MAX % range));
+
+
+  crypto_hash_sha512(seed, seed, seed_len);
+
+  while(i < N) {
+    r = seed[j++];
+    if(j==8)
+    {
+        crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+        j = 0;
+    }
+
     if(r < rndcap) {
       v[i] = ((int64_t)(r % range) - center);
       ++i;

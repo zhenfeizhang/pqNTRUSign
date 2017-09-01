@@ -1,41 +1,103 @@
 /*
- *  Copyright 2017 Zhenfei Zhang @ onboard security
+ * KAT.c
  *
- *  This file is part of pqNTRUSign signature scheme with bimodal
- *  Gaussian sampler (Gaussian-pqNTRUSign).
- *
- *  This software is released under GPL:
- *  you can redistribute it and/or modify it under the terms of the
- *  GNU General Public License as published by the Free Software
- *  Foundation, either version 2 of the License, or (at your option)
- *  any later version.
- *
- *  You should have received a copy of the GNU General Public License.
- *  If not, see <http://www.gnu.org/licenses/>.
-*/
+ *  Created on: Sep 1, 2017
+ *      Author: zhenfei
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 #include <string.h>
+#include "pqNTRUSign.h"
 #include "param.h"
 #include "poly/poly.h"
 #include "rng/fastrandombytes.h"
 #include "rng/crypto_hash_sha512.h"
+
+
+
+/* generate a trinary polynomial with fixed number of +/- 1s */
+void
+pol_gen_flat_KAT(
+          int64_t  *ai,
+    const uint16_t  N,
+    const uint16_t  d,
+    unsigned char   *seed)
+{
+    uint64_t r, *tmp;
+    int16_t count,i,j, coeff[6];
+
+    crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+    tmp = (uint64_t *)seed;
+
+    memset(ai, 0, sizeof(int64_t)*N);
+    count = 0;
+    j = 0;
+    while(count < d+1)
+    {
+        r  = tmp[j++];
+        if(j==8)
+        {
+            crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+            j = 0;
+        }
+
+        for (i =0;i<6;i++)
+        {
+            coeff[i] = r & 0x3FF;
+            r = (r - coeff[i])>>10;
+            if (coeff[i]<N)
+            {
+                if (ai[coeff[i]]==0)
+                {
+                    ai[coeff[i]]=1;
+                    count++;
+                }
+            }
+        }
+    }
+    count = 0;
+    while(count < d)
+    {
+        r  = tmp[j++];
+        if(j==8)
+        {
+            crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+            j = 0;
+        }
+        for (i =0;i<6;i++)
+        {
+            coeff[i] = r & 0x3FF;
+            r = (r - coeff[i])>>10;
+            if (coeff[i]<N)
+            {
+                if (ai[coeff[i]]==0)
+                {
+                    ai[coeff[i]]=-1;
+                    count++;
+                }
+            }
+        }
+    }
+    return;
+}
+
 
 /*
  * generate a set of private/public key pairs.
  * requires a buffer for 4 padded polynomials
  */
 
-void keygen(
+void keygen_KAT(
             int64_t     *f,         /* output - secret key */
             int64_t     *g,         /* output - secret key */
             int64_t     *g_inv,     /* output - secret key */
             int64_t     *h,         /* output - public key */
             int64_t     *buf,       /* input  - buffer     */
-    const   PQ_PARAM_SET*param)     /* input  - parameters */
+    const   PQ_PARAM_SET*param,     /* input  - parameters */
+    unsigned char       *seed)
 {
     int64_t i;
     int64_t *fntt = buf;
@@ -49,9 +111,12 @@ void keygen(
      * generate flat trianry polynomials f and g
      * also compute g^-1 mod 2
      */
-    pol_gen_flat(f, param->N, param->d);
+    pol_gen_flat_KAT(f, param->N, param->d,seed);
+    crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+
     do{
-        pol_gen_flat(g, param->N, param->d);
+        pol_gen_flat_KAT(g, param->N, param->d, seed);
+        crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
     }while (pol_inv_mod2(g_inv, g, param->N) == -1);
 
     /* set f = pf */
@@ -74,17 +139,17 @@ void keygen(
     return;
 }
 
-
 /*
  * rejection sampling on a bimodal sample
  * "sig" with sig = r \pm sec for r sampled from Gaussian
  * reject into a Gaussian
  */
 
-int rejection_sampling(
+int rejection_sampling_with_seed(
     const   int64_t     *sec,
     const   int64_t     *sig,
-    const   PQ_PARAM_SET*param)
+    const   PQ_PARAM_SET*param,
+    unsigned char       *seed)
 {
     uint64_t    t;
     uint64_t    norm;
@@ -110,7 +175,9 @@ int rejection_sampling(
      * sample a random float between 0 and 1
      * accept if this float is small than rate
      */
-    rng_uint64(&t);
+
+    crypto_hash_sha512(seed,seed, LENGTH_OF_HASH);
+    t = seed[0];
     if ((1+(t&bignum))/((double)bignum+1)< rate)
         return 1;
     else
@@ -119,58 +186,12 @@ int rejection_sampling(
 
 
 
-#define HASH_BYTES 64
-
-int
-challenge(
-            int64_t         *msg_dig,       /* output message digest */
-    const   int64_t         *public_key,    /* input public key h */
-    const   unsigned char   *msg,           /* input message */
-    const   size_t          msg_len,        /* input message length */
-    const   PQ_PARAM_SET    *param)         /* input  - parameters */
-{
-    uint16_t      i;
-    uint16_t      j;
-    uint8_t       r;
-
-    unsigned char input[2*HASH_BYTES];
-    unsigned char pool[HASH_BYTES];
-
-    /* pool = hash(hash(msg) || hash(public key)) */
-    crypto_hash_sha512(input, msg, msg_len);
-
-    memcpy(input+HASH_BYTES, public_key, HASH_BYTES);
-    crypto_hash_sha512(pool, input, 2*HASH_BYTES);
-
-    j = 0;
-    i = 0;
-    r = 0;
-    while(i < param->N*2)
-    {
-        if(j == HASH_BYTES)
-        {
-            memcpy(input, pool, HASH_BYTES);
-            crypto_hash_sha512(pool, input, HASH_BYTES);
-            j = 0;
-        }
-        if(r == 0)
-        {
-          r = (uint8_t) pool[j++];
-        }
-        msg_dig[i] = r&1;
-        r >>= 1;
-        i++;
-    }
-
-  return 0;
-}
-
 /*
  * sign a message using rejection sampling method
  * returns the number of repetitions
  * buf memory requirement: 11 polynomials.
  */
-int sign(
+int sign_KAT(
             int64_t     *sig,       /* output - signature  */
     const unsigned char *msg,       /* input  - message    */
     const   size_t      msg_len,    /* input  - length of msg */
@@ -179,7 +200,8 @@ int sign(
     const   int64_t     *g_inv,     /* input  - secret key */
     const   int64_t     *h,         /* input  - public key */
             int64_t     *buf,       /* input  - buffer     */
-    const   PQ_PARAM_SET*param)     /* input  - parameters */
+    const   PQ_PARAM_SET*param,     /* input  - parameters */
+    unsigned char       *seed)
 {
 
     int64_t i;
@@ -194,7 +216,7 @@ int sign(
     int     bit     = 0;    /* flip a bit for bimodal Gaussian */
     int     counter = 0;    /* number of samples to get a signature */
 
-
+    crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
     challenge (sptp, h, msg, msg_len, param);
 
     sample:
@@ -210,16 +232,17 @@ int sign(
         /* sample r from discrete Gaussian and b from binary*/
         if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
         {
-            DGS(r, param->N, param->stdev);
+            DDGS(r, param->N, param->stdev,seed, LENGTH_OF_HASH);
             /* flipping bit for bimodal Gaussian */
-            bit = rand()%2;
+            crypto_hash_sha512(seed, seed, LENGTH_OF_HASH);
+            bit = seed[0]&1;
             if (bit==0)
                 bit = -1;
         }
         /* or sample r from uniform and set b = 1*/
         else if (param->id== uniform_512_107 || param->id==uniform_761_107)
         {
-            pol_unidrnd(r,param->N,param->q/param->p);
+            pol_unidrnd_with_seed(r,param->N,param->q/param->p, seed, LENGTH_OF_HASH);
             bit = 1;
         }
 
@@ -263,7 +286,7 @@ int sign(
         if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
         {
             /* rejection sampling to make signature into a Gaussian */
-            if (rejection_sampling(b, sig, param) == 0)
+            if (rejection_sampling_with_seed(b, sig, param, seed) == 0)
             {
                 goto sample;
             }
@@ -278,85 +301,6 @@ int sign(
         }
 
     return counter;
-}
-
-/*
- * verifies a signature, returns 0 if valid
- * buf memory requirement: 7 polynomials.
- */
-int verify(
-    const   int64_t     *sig,       /* input  - signature  */
-    const unsigned char *msg,       /* input  - message    */
-    const   size_t      msg_len,    /* input  - length of msg */
-    const   int64_t     *h,         /* input  - public key */
-            int64_t     *buf,       /* input  - buffer     */
-    const   PQ_PARAM_SET*param)     /* input  - parameters */
-{
-    int64_t i;
-    int64_t *u      = buf;
-    int64_t *v      = u     + param->padded_N;
-    int64_t *sptp   = v     + param->padded_N;    /* 2 polynomials */
-    int64_t *buffer = sptp  + param->padded_N*2;
-
-    challenge (sptp, h, msg, msg_len, param);
-
-    /* check norm constrains */
-    if (param->id==Gaussian_512_107 || param->id==Gaussian_761_107)
-    {
-        /* check if |s| is smaller than sigma*11 */
-        if (max_norm(sig, param->N)>param->stdev*11)
-        {
-            printf("max norm failed\n");
-            return -1;
-        }
-    }
-    else if (param->id== uniform_512_107 || param->id==uniform_761_107)
-    {
-        /* check if |s| is smaller than norm_bound_t */
-        if (max_norm(sig, param->N)>param->norm_bound_s)
-        {
-            printf("max norm failed\n");
-            return -1;
-        }
-    }
-
-
-    /* reconstruct u = 2s + u_p */
-    for (i=0;i<param->N;i++)
-        u[i] = sig[i]*param->p + sptp[i];
-
-    /* v = u * h */
-    pol_mul_coefficients(v, u, h, param, buffer);
-
-
-    /* check if v \equiv v_p mod p */
-    for (i=0;i<param->N;i++)
-    {
-        if ((v[i]-sptp[i+param->N]) % param->p != 0)
-        {
-            printf("congruent condition failed for param %s \nv:\n", param->name);
-
-            printf("sig:\n");
-            for (i=0;i<param->padded_N;i++)
-                printf("%lld,", (long long) sig[i]);
-            printf("\nu:\n");
-            for (i=0;i<param->padded_N;i++)
-                printf("%lld,", (long long) u[i]);
-            printf("\nv:\n");
-            for (i=0;i<param->padded_N;i++)
-                printf("%lld,", (long long) v[i]);
-            printf("\nh:\n");
-            for (i=0;i<param->padded_N;i++)
-                printf("%lld,", (long long) h[i]);
-            printf("\nmsg:\n");
-            for (i=0;i<param->padded_N;i++)
-                printf("%lld, ", (long long) msg[i+param->N]);
-            printf("\n\n");
-
-            return -1;
-        }
-    }
-    return 0;
 }
 
 
