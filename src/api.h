@@ -9,7 +9,7 @@
 #define API_H_
 
 
-#define TEST_uniform_512
+#define TEST_Gaussian_512
 
 
 #ifdef TEST_Gaussian_512

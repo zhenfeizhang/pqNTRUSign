@@ -108,8 +108,9 @@ void Inv_NTT(
 }
 
 int64_t* extendedEuclid (int64_t a, int64_t b){
-    int64_t *dxy = (int64_t *)malloc(sizeof(int64_t) *3);
 
+    int64_t array[3];
+    int64_t *dxy = array;
     if (b ==0){
         dxy[0] =a; dxy[1] =1; dxy[2] =0;
 

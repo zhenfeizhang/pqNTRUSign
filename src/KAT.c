@@ -154,11 +154,15 @@ int rejection_sampling_with_seed(
     uint64_t    t;
     uint64_t    norm;
     uint64_t    scala;
-    double      rate = param->Ms;
-    long        bignum = 0xfffffff;
+    double      rate    = param->Ms;
+    long        bignum  = 0xfffffff;
+    uint64_t    *ptr    = (uint64_t*) seed;
 
-    norm    = get_scala (sec, sec, param->N);
+
+
+
     /* reject if |af|_2 > B_s */
+    norm    = get_scala (sec, sec, param->N);
     if (norm> param->B_s*param->B_s)
         return 0;
 
@@ -177,7 +181,7 @@ int rejection_sampling_with_seed(
      */
 
     crypto_hash_sha512(seed,seed, LENGTH_OF_HASH);
-    t = seed[0];
+    t = ptr[0];
     if ((1+(t&bignum))/((double)bignum+1)< rate)
         return 1;
     else

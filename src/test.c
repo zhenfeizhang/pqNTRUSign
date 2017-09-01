@@ -294,7 +294,14 @@ int test_nist_api_KAT()
     sk  = malloc(sizeof(unsigned char)* 10000);
     sig = malloc(sizeof(unsigned char)* 5000);
 
-
+    if(!pk||!sk||!sig)
+    {
+        printf("malloc error!\n");
+        return -1;
+    }
+    memset(pk, 0, sizeof(unsigned char)* 5000);
+    memset(sk, 0, sizeof(unsigned char)* 10000);
+    memset(sig,0, sizeof(unsigned char)* 5000);
 
     mlen = get_len(msg);
 
@@ -335,6 +342,10 @@ int test_nist_api_KAT()
     printf("check correctness\n");
     crypto_sign_open(msg, &mlen, sig, siglen, pk);
 
+
+    memset(pk, 0, sizeof(unsigned char)* 5000);
+    memset(sk, 0, sizeof(unsigned char)* 10000);
+    memset(sig,0, sizeof(unsigned char)* 5000);
 
     free(pk);
     free(sk);
